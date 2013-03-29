@@ -1,4 +1,11 @@
 /**
+ * 
+ * This is a working version. Consider it unstable - but usable.
+ * Installation instructions will come very soon with examples.
+ * 
+ */
+
+/**
  * jQuery IO Datagrid (AD)
  * @author  Paul BRIE (1.0) and Gabriel PRECUP (1.0, 1.1, 1.2, 1.3) and Anca BALC (1.4)
  * @date    2013-02-01
