@@ -81,8 +81,6 @@
 
 	/** Build Table **/
 	_buildTable = function(_settings) {
-		//console.log($(this).data('datagrid'));
-		//console.log(_targets);
 		$('.ad-datagrid', _settings._target).html('<span class="ad-loading label">'+_settings.ad_loading_text+'</span><table class="ad-display" width="' + _settings.width +'"><thead></thead><tfoot></tfoot><tbody></tbody></table>');
 
 		_setTableCss(_settings);
@@ -128,7 +126,7 @@
 	}
 
     /**
-    * Attach CLick Event to Order Links
+    * Attach Click Event to Order Links
     * Mod 21.03.2013 - Anca BALC json order
     * 
     * @param _settings
@@ -282,9 +280,8 @@
 	/** Will refresh datagrid with rows from datasource **/
 	_refreshRows = function(_settings) {
 		// reset num rows
-		_settings._num_rows = 0;
-
-        //console.log('C page = '+ _settings._currentPage);
+		_settings._num_rows = 0;                         
+        
 		// init vars
 		var table_rows = '',
 			table_row = '',
@@ -351,7 +348,6 @@
 	_searchAction = function(_settings, string) {
 		// Get filter value
 		var filter = string;
-        console.log(filter);
         if (string != "")
         {
             // Init respons json
@@ -360,12 +356,16 @@
             $.each(_settings._rawData.data, function(index,value){
                 var match = false;
                 $.each(this, function(i, v) {
-                    if (i > 0 && i< parseInt(_settings.colTitles.length-1))
+                    if (_settings.data.filter_by_fields != undefined)
                     {
-                        // Apply filter & add corresponding values
-                        var expresion = RegExp(filter, "i"); 
-                        var result = expresion.test(v);
-                        if(result) match = true;
+                        if ($.inArray(_settings.colNames[i],_settings.data.filter_by_fields) != -1)
+                        {
+                            if(matchExpresion(filter,v)) match = true;
+                        }   
+                    }
+                    else
+                    {      
+                        if(matchExpresion(filter,v)) match = true;    
                     }
                 })
                 // If any value found add it
@@ -379,7 +379,8 @@
         {
             jsonTempData = null;    
         }
-        
+        // Reset page on search 
+        _settings._currentPage = 1;
         // Refresh row with extra param if 
         _refreshRows(_settings);
 	}
@@ -652,6 +653,11 @@
         }    
     }
     
+    function matchExpresion(expresion, value)
+    {
+        var expresion = RegExp(expresion, "i"); 
+        return result = expresion.test(value);
+    }
     
     /**
     * Build request params. If useLocalStorage add extra value.
@@ -794,4 +800,4 @@
 	/*$(function () {
 		return new ADatagrid($('.datagrid'));
 	});*/
-})( jQuery );//.call(this);
+})( jQuery );//.call(this); 
