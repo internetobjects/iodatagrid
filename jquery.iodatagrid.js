@@ -1,11 +1,4 @@
 /**
- * 
- * This is a working version. Consider it unstable - but usable.
- * Installation instructions will come very soon with examples.
- * 
- */
-
-/**
  * jQuery IO Datagrid (AD)
  * @author  Paul BRIE (1.0) and Gabriel PRECUP (1.0, 1.1, 1.2, 1.3) and Anca BALC (1.4)
  * @date    2013-02-01
@@ -75,7 +68,6 @@
 			_buildItemsPerPageSelect(_settings);
             _buildPagination(_settings);
             _buildFoot(_settings);
-            _buildFooterTemp(_settings);
 		}
 	},
 
@@ -149,23 +141,27 @@
 		});
 	}
     
+    /** Build table foot columns **/ 
     _buildFoot = function(_settings)
-    {
-        _dbg('footer');
-        var $tfoot = $('table.ad-display tfoot', _settings._target);
-        if (typeof(_settings.colTitles)=='object')
-        {
-            $tfoot.find('tr').remove();
-            col = '';
-            $.each(_settings.colTitles, function(index, val) {
-                // style
-                col += '<th></th>';
-            });
-            $tfoot.prepend('<tr>' + col + '</tr>');
+    {   
+        if (_settings.fxFootCallbacks != undefined) {                
+            var $tfoot = $('table.ad-display tfoot', _settings._target);
+            if (typeof(_settings.colTitles)=='object')
+            {
+                $tfoot.find('tr').remove();
+                col = '';
+                $.each(_settings.colTitles, function(index, val) {
+                    // style
+                    col += '<th></th>';
+                });
+                $tfoot.prepend('<tr>' + col + '</tr>');
+            }
         }
     }
-    _buildFooterTemp = function(data) {
-        if (_settings.fxFootCallbacks.length > 0) {
+    
+    /** Build table foot callbacks **/
+    _buildFootCallbacks = function(data) {
+        if (_settings.fxFootCallbacks != undefined) {
             var i = 1;
             $.each(_settings.fxFootCallbacks, function(index, fxFootCallbacks) {
                 if (typeof(fxFootCallbacks) == 'function') {    
@@ -319,7 +315,7 @@
 		_updateNumRows(_settings);
 		_updatePages(_settings);
         
-       _buildFooterTemp(_settings._rawData.data);
+       _buildFootCallbacks(_settings._rawData.data);
 
 		// always remove tbody before populate
 		$('table.ad-display tbody', _settings._target).html('');
