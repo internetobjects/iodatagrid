@@ -631,7 +631,6 @@
         // Get order direction
         var order = _settings.data.order_dir;
         // Sort string values
-        console.log(Date.parse(a[index]));
         if (isNaN(a[index]))
         {
             if (order == "asc") return (a[index] > b[index]);
