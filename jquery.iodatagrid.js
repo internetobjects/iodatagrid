@@ -1,10 +1,9 @@
 /**
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
- * @site
- * @date    2013-04-17
- * @version 1.4.1
- * @todo
+ * @site    http://internet-objects.ro
+ * @date    2013-04-18
+ * @version 1.4.2
  * 1. List - OK
  * 2. Add button - OK
  * 3. Pagination - OK
@@ -76,10 +75,10 @@
 
     /** Build Table **/
     _buildTable = function(_settings) {
-        $('.ad-datagrid', _settings._target).html(
-            '<span class="ad-loading label">' +
-            _settings.ad_loading_text +
-            '</span><table class="ad-display" width="' +
+        $('.dg-datagrid', _settings._target).html(
+            '<span class="dg-loading label">' +
+            _settings.dg_loading_text +
+            '</span><table class="dg-display" width="' +
             _settings.width +
             '"><thead></thead><tfoot></tfoot><tbody></tbody></table>'
         );
@@ -90,7 +89,7 @@
     /** Build Titles **/
     _buildTitles = function(_settings) {
         _dbg('titles');
-        var $thead = $('table.ad-display thead', _settings._target);
+        var $thead = $('table.dg-display thead', _settings._target);
         var col = '',
             style = '',
             order_by = '';
@@ -130,7 +129,7 @@
 
     /** Attach Click Event to Order Links **/
     _attachClickEventToTitles = function(_settings) {
-        $('table.ad-display thead', _settings._target).delegate('a', 'click', function(e){
+        $('table.dg-display thead', _settings._target).delegate('a', 'click', function(e){
             e.preventDefault();
             // Set new ordering values
             var data = _settings.data;
@@ -151,7 +150,7 @@
     _buildFoot = function(_settings)
     {
         if (_settings.fxFootCallbacks != undefined) {
-            var $tfoot = $('table.ad-display tfoot', _settings._target);
+            var $tfoot = $('table.dg-display tfoot', _settings._target);
             if (typeof(_settings.colTitles) === 'object')
             {
                 $tfoot.find('tr').remove();
@@ -165,7 +164,7 @@
     }
 
     /** Build table foot callbacks **/
-    _buildFootCallbacks = function(data) {
+    _buildFootCallbacks = function(_settings, data) {
         if (_settings.fxFootCallbacks != undefined) {
             var i = 1;
             $.each(_settings.fxFootCallbacks, function(index, fxFootCallbacks) {
@@ -178,45 +177,45 @@
         }
     }
 
-    /** Build AD Pagination **/
+    /** Build Pagination **/
     _buildPagination = function(_settings) {
-        // if pagination div doesn't exist
-        if ($('.ad-pagination', _settings._target).length==0)
+        // if pagination div doesn't exist in header
+        if ($('.dg-pagination', _settings._target).length==0)
         {
-            $('.ad-header', _settings._target).prepend('<div class="ad-pagination"><ul>'+
-                '<li class="ad-items disabled"><a href="#">'+_settings.ad_items_text+' <span></span></a></li>'+
-                '<li class="ad-first-last ad-first"><a href="#">'+_settings.ad_first_text+'</a></li>'+
-                '<li class="ad-prev-next ad-prev"><a href="#">'+_settings.ad_prev_text+'</a></li>'+
-                '<li class="ad-prev-next ad-next"><a href="#">'+_settings.ad_next_text+'</a></li>'+
-                '<li class="ad-first-last ad-last"><a href="#">'+_settings.ad_last_text+'</a></li>'+
-                '</ul></div>');
-            _setPaginationCss(_settings);
-        }
-        else
-        {
-            $('.ad-footer .ad-pagination').html('<ul>'+
-                '<li class="ad-items disabled"><a href="#">'+_settings.ad_items_text+' <span></span></a></li>'+
-                '<li class="ad-first-last ad-first"><a href="#">'+_settings.ad_first_text+'</a></li>'+
-                '<li class="ad-prev-next ad-prev"><a href="#">'+_settings.ad_prev_text+'</a></li>'+
-                '<li class="ad-prev-next ad-next"><a href="#">'+_settings.ad_next_text+'</a></li>'+
-                '<li class="ad-first-last ad-last"><a href="#">'+_settings.ad_last_text+'</a></li>'+
-                '</ul>');
+            var paginationUI = '<ul>'+
+                                    '<li class="dg-items disabled"><a href="#">'+_settings.dg_items_text+' <span></span></a></li>'+
+                                    '<li class="dg-first-last dg-first"><a href="#">'+_settings.dg_first_text+'</a></li>'+
+                                    '<li class="dg-prev-next dg-prev"><a href="#">'+_settings.dg_prev_text+'</a></li>'+
+                                    '<li class="dg-prev-next dg-next"><a href="#">'+_settings.dg_next_text+'</a></li>'+
+                                    '<li class="dg-first-last dg-last"><a href="#">'+_settings.dg_last_text+'</a></li>'+
+                                    '</ul>';
+            // if position in header
+            if (_settings.paginationPosition=='header')
+            {
+                $('.dg-header', _settings._target).prepend('<div class="dg-pagination">'+paginationUI+'</div>');
+            }
+            // if position in footer
+            else if (_settings.paginationPosition=='footer')
+            {
+                $('.dg-footer', _settings._target).prepend('<div class="dg-pagination">'+paginationUI+'</div>');
+            }
+            // set extra pagination css if requested
             _setPaginationCss(_settings);
         }
     }
 
-    /** Build AD Filter **/
+    /** Build Filter **/
     _buildFilter = function(_settings) {
         if (_settings.filter)
         {
-            if ($('.ad-header', _settings._target).length==0)
+            if ($('.dg-header', _settings._target).length==0)
             {
-                $('.ad-header', _settings._target).append('<input class="ad-filter" value="" />');
+                $('.dg-header', _settings._target).append('<input class="dg-filter" value="" />');
             }
             // search by keyup
-            if ($('.ad-submit', _settings._target).length==0)
+            if ($('.dg-submit', _settings._target).length==0)
             {
-                $('.ad-filter', _settings._target).keyup(function(){
+                $('.dg-filter', _settings._target).keyup(function(){
                     _dbg($(this).val());
                     _searchAction(_settings, $(this).val());
                 });
@@ -225,39 +224,39 @@
             else
             {
                 // click on search button
-                $('.ad-submit', _settings._target).click(function(event){
+                $('.dg-submit', _settings._target).click(function(event){
                     event.preventDefault();
-                    _dbg($('.ad-filter', _settings._target).val());
-                    _searchAction(_settings, $('.ad-filter', _settings._target).val());
+                    _dbg($('.dg-filter', _settings._target).val());
+                    _searchAction(_settings, $('.dg-filter', _settings._target).val());
                     return false;
                 });
                 // trigger search on Enter
-                $('.ad-filter', _settings._target).keyup(function(event){
+                $('.dg-filter', _settings._target).keyup(function(event){
                     if (_settings.filter_dynamic || event.keyCode == 13)
                     {
-                        $(".ad-submit", _settings._target).click();
+                        $(".dg-submit", _settings._target).click();
                     }
                 });
             }
             // search by
-            if ($('.ad-searchby', _settings._target).length==0 && _settings.filter_by_label!="")
+            if ($('.dg-searchby', _settings._target).length==0 && _settings.filter_by_label!="")
             {
-                $('.ad-search', _settings._target).append('<div class="ad-searchby"><em>'+_settings.filter_by_label+'</em></div>');
+                $('.dg-search', _settings._target).append('<div class="dg-searchby"><em>'+_settings.filter_by_label+'</em></div>');
             }
         }
     }
 
     /** Build Footer Tag **/
     _buildFooterTag = function(_settings) {
-        if ($('div.ad-footer', _settings._target).length == 0)
+        if ($('div.dg-footer', _settings._target).length == 0)
         {
-            $(_settings._target).append('<div class="ad-footer"></div>');
+            $(_settings._target).append('<div class="dg-footer"></div>');
         }
     }
 
     /** Build Items Per Page Select Box **/
     _buildItemsPerPageSelect = function(_settings) {
-        if ($('.ad-items-per-page', _settings._target).length == 0)
+        if ($('.dg-items-per-page', _settings._target).length == 0)
         {
             var ipp_option_selected_index = -1;
             var ipp_options = '';
@@ -272,7 +271,7 @@
             {
                 ipp_options = '<option value="' + _settings.ipp + '" selected="selected">-</option>' + ipp_options;
             }
-            $('.ad-header', _settings._target).append('<div class="ad-items-per-page"><select>' + ipp_options + '</select></div>').change(function(){
+            $('.dg-header', _settings._target).append('<div class="dg-items-per-page"><select>' + ipp_options + '</select></div>').change(function(){
                 _setItemsPerPage(_settings);
             });
             _setIppCss(_settings);
@@ -282,62 +281,88 @@
     /** Will refresh datagrid with rows from datasource **/
     _refreshRows = function(_settings) {
         // reset num rows
-        _settings._num_rows = 0;
-
-        // init vars
-        var table_rows = '',
-            table_row = '',
-            start = ((_settings._currentPage - 1) * _settings.ipp);
-
+        var numRows = 0;
+        // table rows holder
+        var tableRows = '';
+        // page start / end
+        var limitStart = ((_settings._currentPage - 1) * _settings.ipp);
+        var limitEnd = (_settings.ipp * _settings._currentPage);
+        // table head
+        var tblHead = _settings._rawData.head;
+        // table data
+        var tblData = _settings._rawData.data;
         // Search into parent json or in the filtered json
-        var searchObject = (jsonTempData != null) ? jsonTempData : _settings._rawData.data;
+        var searchObject = (jsonTempData != null) ? jsonTempData : tblData;
 
-        // create an object with the column names as keys
-        var _colNames = {};
-        $.each(_settings.colNames, function(index, val){
-            _colNames[val] = 1;
-        });
-
-        // foreach line from datasource matching our needs
-        $.each(searchObject, function (index, val) {
+        // for each line from datasource matching our needs
+        $.each(searchObject, function (searchObjectRowIndex, searchObjectRow) {
             // rebuild a row for display
-            if (_settings._num_rows>=start && _settings._num_rows<(_settings.ipp * _settings._currentPage))
+            if (numRows >= limitStart && numRows < limitEnd)
             {
-                table_row = '';
-                $.each(_settings._rawData.head, function(index1, val1){
-                    // display only the requested fields
-                    if (_colNames[val1])
-                        table_row += '<td col-name="' + val1 + '">' + val[index1] + '</td>';
+                // table row holder
+                var tableRow = '';
+
+                // iterate through all column names and display only the requested fields
+                $.each(_settings.colNames, function(colNameIndex, colName) {
+                    // index of item in json data head
+                    var colNameIndexInHead = $.inArray(colName, tblHead);
+
+                    // if item found in json head
+                    // (colNameIndexInHead can be different than the colNameIndex, if we have for example, [id, title, id])
+                    if (colNameIndexInHead != -1)
+                    {
+                        var rowValue = '';
+                        // first get value at index of colName, if any
+                        if (searchObjectRow[colNameIndex]!==undefined)
+                        {
+                            rowValue = searchObjectRow[colNameIndex];
+                        }
+                        // then, find if there is a value in json data at index of column with the same name in head
+                        else
+                        {
+                            rowValue = searchObjectRow[colNameIndexInHead];
+                        }
+
+                        // add value to table cell
+                        tableRow += '<td col-name="' + colName + '">' + rowValue + '</td>';
+                    }
                 });
-                if (table_row!="")
-                    table_rows += '<tr>' + table_row + '</tr>';
+
+                // add row to table rows holder
+                if (tableRow != "")
+                {
+                    tableRows += '<tr>' + tableRow + '</tr>';
+                }
             }
-            _settings._num_rows++;
+            numRows++;
         });
 
-        _updateNumRows(_settings);
+        // update datagrid UI
+        _updateNumRows(_settings, numRows);
         _updatePages(_settings);
-        _buildFootCallbacks(_settings._rawData.data);
-        _buildTBody(_settings, table_rows);
-        _updateCellFx(_settings, _settings._rawData.data);
+        _buildFootCallbacks(_settings, tblData);
+        _buildTBody(_settings, tableRows);
+        _updateCellFx(_settings);
     }
 
     /** Build table body **/
-    _buildTBody = function(_settings, table_rows) {
+    _buildTBody = function(_settings, tableRows) {
         // always empty tbody before populate
-        $('table.ad-display tbody', _settings._target).html('');
+        $('table.dg-display tbody', _settings._target).html('');
         // display data
-        $('table.ad-display tbody', _settings._target).html( table_rows );
+        $('table.dg-display tbody', _settings._target).html( tableRows );
     }
 
     /** Update Cells with given Functions **/
-    _updateCellFx = function(_settings, data) {
-        if (_settings.fx.length > 0) {
+    _updateCellFx = function(_settings) {
+        if (_settings.fx.length > 0)
+        {
             var i = 1;
             $.each(_settings.fx, function(index, fx) {
-                if (typeof(fx) === 'function') {
-                    $.each($('table.ad-display tbody tr > :nth-child(' + i + ')', _settings._target), function() {
-                        fx(this,data);
+                if (typeof(fx) === 'function')
+                {
+                    $.each($('table.dg-display tbody tr > :nth-child(' + i + ')', _settings._target), function() {
+                        fx(this, _settings._rawData.data);
                     });
                 }
                 i++;
@@ -346,31 +371,32 @@
     }
 
     /** Search Action **/
-    _searchAction = function(_settings, string) {
-        // Get filter value
-        var filter = string;
-        if (string != "")
+    _searchAction = function(_settings, filter) {
+        // Check filter value
+        if (filter != "")
         {
-            // Init respons json
+            // Init response json
             jsonTempData = [];
             // Parse parent json
-            $.each(_settings._rawData.data, function(index,value){
+            $.each(_settings._rawData.data, function(index, value){
                 var match = false;
                 $.each(this, function(i, v) {
                     if (_settings.data.filter_by_fields != undefined)
                     {
-                        if ($.inArray(_settings.colNames[i],_settings.data.filter_by_fields) != -1)
+                        if ($.inArray(_settings.colNames[i], _settings.data.filter_by_fields) != -1)
                         {
-                            if(_matchExpresion(filter,v)) match = true;
+                            if (_matchExpresion(filter, v))
+                                match = true;
                         }
                     }
                     else
                     {
-                        if(_matchExpresion(filter,v)) match = true;
+                        if (_matchExpresion(filter, v))
+                            match = true;
                     }
-                })
+                });
                 // If any value found add it
-                if(match)
+                if (match)
                 {
                     jsonTempData.push(value);
                 }
@@ -395,7 +421,7 @@
             type: 'post',
             beforeSend: function(responseData) {
                 _dbg('before send');
-                $('.ad-loading', _settings._target).show();
+                $('.dg-loading', _settings._target).show();
             },
             success: function(responseData) {
                 _dbg('data loaded OK');
@@ -430,105 +456,111 @@
     }
 
     /** Update HTML with num rows after refresh **/
-    _updateNumRows = function(_settings) {
-        $(".ad-items span", _settings._target).text('(' + _settings._num_rows + ')');
+    _updateNumRows = function(_settings, numRows) {
+        _settings._numRows = numRows;
+        $(".dg-items span", _settings._target).text('(' + numRows + ')');
     }
 
     /** Get number of rows returned from datasource **/
     _getNumRows = function(_settings) {
-        return _settings._num_rows;
+        return _settings._numRows;
     }
 
     /** Update pages after refresh **/
     _updatePages = function(_settings) {
-        // num pages
-        var pagesFloat = _settings._num_rows / _settings.ipp;
-
+        // num pages float
+        var numPagesFloat = (_settings._numRows / _settings.ipp);
         // round up num pages
-        _settings._pages = parseInt(pagesFloat);
-        if (pagesFloat > parseInt(pagesFloat))
-            _settings._pages++;
+        var numPages = parseInt(numPagesFloat);
+        if (numPagesFloat > parseInt(numPagesFloat))
+        {
+            numPages++;
+        }
+        // current page
+        var currentPage = _settings._currentPage;
 
         // remove "disabled" class from all menu items
-        $('.ad-pagination ul li:not(.ad-items)', _settings._target).removeClass('disabled');
+        $('.dg-pagination ul li:not(.dg-items)', _settings._target).removeClass('disabled');
 
         // start, end menu items
-        var max_menu_items = (_settings.max_menu_items%2==0 ? (_settings.max_menu_items+1) : _settings.max_menu_items);
-        var start_item_index = 1;
-        var end_item_index = _settings._pages;
+        var maxMenuItems = (_settings.max_menu_items%2==0 ? (_settings.max_menu_items+1) : _settings.max_menu_items);
+        var startItemIndex = 1;
+        var endItemIndex = numPages;
 
-        if (_settings._pages>max_menu_items)
+        if (numPages > maxMenuItems)
         {
             // 4
-            var items = (max_menu_items - 1);
+            var items = (maxMenuItems - 1);
             // 2
             var offset = (items / 2);
             // 10
-            var end_offset = _settings._pages - offset;
+            var endOffset = numPages - offset;
             // 3 - 10
-            if (_settings._currentPage>offset && _settings._currentPage<=end_offset)
+            if (currentPage > offset && currentPage <= endOffset)
             {
-                start_item_index = _settings._currentPage - offset;
-                if (_settings._currentPage<=end_offset)
+                startItemIndex = (currentPage - offset);
+                if (currentPage <= endOffset)
                 {
-                    end_item_index = parseInt(_settings._currentPage) + parseInt(offset);
+                    endItemIndex = (parseInt(currentPage) + parseInt(offset));
                 }
             }
             // 1 - 2
-            else if (_settings._currentPage<=offset)
+            else if (currentPage <= offset)
             {
-                var offset = (max_menu_items - _settings._currentPage);
-                end_item_index = parseInt(_settings._currentPage) + parseInt(offset);
+                endItemIndex = parseInt(currentPage) + parseInt((maxMenuItems - currentPage));
             }
             // 11 - 12
-            else if (_settings._currentPage>end_offset)
+            else if (currentPage > endOffset)
             {
-                var offset = _settings._currentPage - (items - (_settings._pages - _settings._currentPage));
-                start_item_index = offset;
+                startItemIndex = (currentPage - (items - (numPages - currentPage)));
             }
         }
 
         // disable some menu items
-        if (_settings._pages==1 || _settings._pages==0)
+        if (numPages==1 || numPages==0)
         {
-            $('.ad-pagination ul li', _settings._target).addClass('disabled');
+            $('.dg-pagination ul li', _settings._target).addClass('disabled');
         }
-        else if (_settings._currentPage==1)
+        else if (currentPage==1)
         {
-            $('.ad-pagination ul li.ad-first-last', _settings._target).first().addClass('disabled');
-            $('.ad-pagination ul li.ad-prev-next', _settings._target).first().addClass('disabled');
+            $('.dg-pagination ul li.dg-first-last', _settings._target).first().addClass('disabled');
+            $('.dg-pagination ul li.dg-prev-next', _settings._target).first().addClass('disabled');
         }
-        else if (_settings._currentPage==_settings._pages)
+        else if (currentPage==numPages)
         {
-            $('.ad-pagination ul li.ad-first-last', _settings._target).last().addClass('disabled');
-            $('.ad-pagination ul li.ad-prev-next', _settings._target).last().addClass('disabled');
+            $('.dg-pagination ul li.dg-first-last', _settings._target).last().addClass('disabled');
+            $('.dg-pagination ul li.dg-prev-next', _settings._target).last().addClass('disabled');
         }
-        $('.ad-pagination ul li', _settings._target).unbind('click');
-        $('.ad-pagination ul li.ad-page-item', _settings._target).remove();
-
-        // create numbered menu items
-        var li = '';
-        for(i = start_item_index; i <= end_item_index; i++)
-        {
-            li += '<li class="ad-page-item'+(i==_settings._currentPage ? ' active' : '')+'"><a href="#">' + i + '</a></li>';
-        }
+        
+        // unbind click events from li's
+        $('.dg-pagination ul li', _settings._target).unbind('click');
+        $('.dg-pagination ul li.dg-page-item', _settings._target).remove();
 
         // add pagination li items
-        var selector = '.ad-items';
-        if ($('.ad-pagination ul li.ad-prev-next', _settings._target).length!=0)
-            selector = '.ad-prev-next';
-        else if ($('.ad-pagination ul li.ad-first-last', _settings._target).length!=0)
-            selector = '.ad-first-last';
+        var selector = '.dg-items';
+        if ($('.dg-pagination ul li.dg-prev-next', _settings._target).length!=0)
+            selector = '.dg-prev-next';
+        else if ($('.dg-pagination ul li.dg-first-last', _settings._target).length!=0)
+            selector = '.dg-first-last';
 
+        // create numbered menu items
+        var menuItemLi = '';
+        for(i = startItemIndex; i <= endItemIndex; i++)
+        {
+            menuItemLi += '<li class="dg-page-item'+(i==currentPage ? ' active' : '')+'"><a href="#">' + i + '</a></li>';
+        }
         // add li's after first found item in selector
-        $(".ad-pagination ul "+selector, _settings._target).first().after(li);
+        $(".dg-pagination ul "+selector, _settings._target).first().after(menuItemLi);
 
-        var count = 0;
-        $(".ad-pagination ul li:not(.ad-items,.disabled)", _settings._target).click(function(e) {
+        // add click event for pagination
+        $(".dg-pagination ul li:not(.dg-items,.disabled)", _settings._target).click(function(e) {
             e.preventDefault();
             _changePageFx(_settings, this);
             return false;
         });
+        
+        // set number of pages
+        _settings._numPages = numPages;
     }
 
     /** Change Page Action **/
@@ -537,46 +569,47 @@
         _settings._currentPage = parseInt(_settings._currentPage);
 
         // goto previous page
-        if ($(elem).hasClass('ad-prev'))
+        if ($(elem).hasClass('dg-prev'))
         {
             if (_settings._currentPage>1) _settings._currentPage--;
         }
         // goto next page
-        else if ($(elem).hasClass('ad-next'))
+        else if ($(elem).hasClass('dg-next'))
         {
-            if (_settings._currentPage<_settings._pages) _settings._currentPage++;
+            if (_settings._currentPage<_settings._numPages) _settings._currentPage++;
         }
         // goto first page
-        else if ($(elem).hasClass('ad-first'))
+        else if ($(elem).hasClass('dg-first'))
         {
             _settings._currentPage = 1;
         }
         // goto last page
-        else if ($(elem).hasClass('ad-last'))
+        else if ($(elem).hasClass('dg-last'))
         {
-            _settings._currentPage = _settings._pages;
+            _settings._currentPage = _settings._numPages;
         }
         // other pages
         else
         {
             _settings._currentPage = $(elem).text();
         }
+        // refresh rows
         _refreshRows(_settings);
     }
 
     /** Main Table CSS **/
     _setTableCss = function(_settings) {
-        if (_settings.tableCss!='')
+        if (_settings.tableCss != '')
         {
-            $('table.ad-display', _settings._target).addClass(_settings.tableCss);
+            $('table.dg-display', _settings._target).addClass(_settings.tableCss);
         }
     }
 
     /** Pagination Component CSS **/
     _setPaginationCss = function(_settings) {
-        if (_settings.paginationCss!='')
+        if (_settings.paginationCss != '')
         {
-            $('.ad-pagination', _settings._target).addClass(_settings.paginationCss);
+            $('.dg-pagination', _settings._target).addClass(_settings.paginationCss);
         }
     }
 
@@ -584,15 +617,15 @@
     _setIppCss = function(_settings) {
         if (_settings.ippCss!='')
         {
-            $('.ad-items-per-page', _settings._target).addClass(_settings.ippCss);
+            $('.dg-items-per-page', _settings._target).addClass(_settings.ippCss);
         }
     }
 
     /** Items Per Page Component **/
     _setItemsPerPage = function(_settings) {
-        if ($('.ad-items-per-page', _settings._target).length!=0)
+        if ($('.dg-items-per-page', _settings._target).length!=0)
         {
-            _settings.ipp = $('.ad-items-per-page select', _settings._target).val();
+            _settings.ipp = $('.dg-items-per-page select', _settings._target).val();
             _settings._currentPage = 1;
             _refreshRows(_settings);
         }
@@ -604,7 +637,7 @@
         var index = _settings.colNames.indexOf(_settings.data.order_by);
         // Get order column direction
         var order = _settings.data.order_dir;
-        
+
         // Sort search json if any
         if (jsonTempData != null)
         {
@@ -686,18 +719,18 @@
 
     /** Hide Loading **/
     _hideLoading = function(_settings) {
-        $('.ad-loading', _settings._target).hide();
+        $('.dg-loading', _settings._target).hide();
     }
 
     /** Debug Component **/
     _dbg = function(info) {
         if (debug)
         {
-            if ($("#ad_dbg").length == 0)
+            if ($("#dg_dbg").length == 0)
             {
-                $("body").append('<hr /><div id="ad_dbg"><div>');
+                $("body").append('<hr /><div id="dg_dbg"><div>');
             }
-            $('#ad_dbg').prepend('<div>' + info + '</div>');
+            $('#dg_dbg').prepend('<div>' + info + '</div>');
         }
     }
 
@@ -740,10 +773,10 @@
     }
 
     $.fn.IODatagrid.defaults = {
-        _num_rows: 0,
+        _numRows: 0,
         _rawData: null,
         _currentPage: 1,
-        _pages: null,
+        _numPages: null,
         datasource: "json", // options: 'json' (default)
         url : "",
         data: {
@@ -757,7 +790,8 @@
         width: 600,
         height: 600,
         tableCss: "table table-bordered table-striped",
-        paginationCss: "span7 pagination pagination-small",
+        paginationCss: "span7 pagination",
+        paginationPosition: "header",
         ippCss: "span1",
         colTitles: [],
         colNames: [],
@@ -770,12 +804,12 @@
         ipp: 10, // items per page
         ipp_options: [2, 5, 10, 20, 50, 100],
         max_menu_items: 5, // an odd value
-        ad_loading_text: "Loading table data... Please wait...",
-        ad_items_text: "Items",
-        ad_first_text: "&laquo;",   // translate('list_paging_first'),
-        ad_prev_text: "&lsaquo;",   // translate('list_paging_previous'),
-        ad_next_text: "&rsaquo;",   // translate('list_paging_next'),
-        ad_last_text: "&raquo;",    // translate('list_paging_last'),
+        dg_loading_text: "Loading table data... Please wait...",
+        dg_items_text: "Items",
+        dg_first_text: "&laquo;",   // translate('list_paging_first'),
+        dg_prev_text: "&lsaquo;",   // translate('list_paging_previous'),
+        dg_next_text: "&rsaquo;",   // translate('list_paging_next'),
+        dg_last_text: "&raquo;",    // translate('list_paging_last'),
         icon_order_up: "icon-chevron-up",
         icon_order_down: "icon-chevron-down",
         icon_order_default: "icon-th",
