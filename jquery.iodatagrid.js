@@ -2,8 +2,8 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2013-04-18
- * @version 1.4.2
+ * @date    2013-04-19
+ * @version 1.4.3
  * 1. List - OK
  * 2. Add button - OK
  * 3. Pagination - OK
@@ -30,12 +30,12 @@
             _settings._target = $(element);
 
             // build datagrid
-            _buildDatagrid(_settings);
+            _buildDatagrid();
         }
 
         /** Public methods **/
         IODatagrid.prototype.refresh = function () {
-            _loadData(_settings);
+            _loadData();
         };
         IODatagrid.prototype.eventDataLoaded = function (fn) {
             fn();
@@ -49,7 +49,7 @@
     /** Private Methods **/
 
     /** Trigger event after load **/
-    _eventDataLoaded = function(_settings) {
+    _eventDataLoaded = function() {
         if (typeof(_settings.triggerAfterLoad) === "function")
         {
             _settings.triggerAfterLoad();
@@ -57,24 +57,24 @@
     }
 
     /** Build Datagrid **/
-    _buildDatagrid = function(_settings) {
+    _buildDatagrid = function() {
         _dbg('_buildDatagrid');
         if (_settings.url!="")
         {
-            _loadData(_settings);
-            _buildTable(_settings);
-            _buildTitles(_settings);
-            _attachClickEventToTitles(_settings);
-            _buildFooterTag(_settings);
-            _buildFilter(_settings);
-            _buildItemsPerPageSelect(_settings);
-            _buildPagination(_settings);
-            _buildFoot(_settings);
+            _loadData();
+            _buildTable();
+            _buildTitles();
+            _attachClickEventToTitles();
+            _buildFooterTag();
+            _buildFilter();
+            _buildItemsPerPageSelect();
+            _buildPagination();
+            _buildFoot();
         }
     }
 
     /** Build Table **/
-    _buildTable = function(_settings) {
+    _buildTable = function() {
         $('.dg-datagrid', _settings._target).html(
             '<span class="dg-loading label">' +
             _settings.dg_loading_text +
@@ -82,12 +82,11 @@
             _settings.width +
             '"><thead></thead><tfoot></tfoot><tbody></tbody></table>'
         );
-
-        _setTableCss(_settings);
+        _setTableCss();
     }
 
     /** Build Titles **/
-    _buildTitles = function(_settings) {
+    _buildTitles = function() {
         _dbg('titles');
         var $thead = $('table.dg-display thead', _settings._target);
         var col = '',
@@ -128,7 +127,7 @@
     }
 
     /** Attach Click Event to Order Links **/
-    _attachClickEventToTitles = function(_settings) {
+    _attachClickEventToTitles = function() {
         $('table.dg-display thead', _settings._target).delegate('a', 'click', function(e){
             e.preventDefault();
             // Set new ordering values
@@ -137,17 +136,17 @@
             data.order_dir = $(this).attr('order-dir');
             _settings.data = data;
             // Sort json according to order params
-            _sortJson(_settings);
+            _sortJson();
             // Refresh table rows after json ordering
-            _refreshRows(_settings);
+            _refreshRows();
             // Build title with new ordering values
-            _buildTitles(_settings);
+            _buildTitles();
             return false;
         });
     }
 
     /** Build table foot columns **/
-    _buildFoot = function(_settings)
+    _buildFoot = function()
     {
         if (_settings.fxFootCallbacks != undefined) {
             var $tfoot = $('table.dg-display tfoot', _settings._target);
@@ -164,7 +163,7 @@
     }
 
     /** Build table foot callbacks **/
-    _buildFootCallbacks = function(_settings, data) {
+    _buildFootCallbacks = function(data) {
         if (_settings.fxFootCallbacks != undefined) {
             var i = 1;
             $.each(_settings.fxFootCallbacks, function(index, fxFootCallbacks) {
@@ -178,7 +177,7 @@
     }
 
     /** Build Pagination **/
-    _buildPagination = function(_settings) {
+    _buildPagination = function() {
         // if pagination div doesn't exist in header
         if ($('.dg-pagination', _settings._target).length==0)
         {
@@ -200,12 +199,12 @@
                 $('.dg-footer', _settings._target).prepend('<div class="dg-pagination">'+paginationUI+'</div>');
             }
             // set extra pagination css if requested
-            _setPaginationCss(_settings);
+            _setPaginationCss();
         }
     }
 
     /** Build Filter **/
-    _buildFilter = function(_settings) {
+    _buildFilter = function() {
         if (_settings.filter)
         {
             if ($('.dg-header', _settings._target).length==0)
@@ -217,7 +216,7 @@
             {
                 $('.dg-filter', _settings._target).keyup(function(){
                     _dbg($(this).val());
-                    _searchAction(_settings, $(this).val());
+                    _searchAction($(this).val());
                 });
             }
             // or by button click
@@ -227,7 +226,7 @@
                 $('.dg-submit', _settings._target).click(function(event){
                     event.preventDefault();
                     _dbg($('.dg-filter', _settings._target).val());
-                    _searchAction(_settings, $('.dg-filter', _settings._target).val());
+                    _searchAction($('.dg-filter', _settings._target).val());
                     return false;
                 });
                 // trigger search on Enter
@@ -247,7 +246,7 @@
     }
 
     /** Build Footer Tag **/
-    _buildFooterTag = function(_settings) {
+    _buildFooterTag = function() {
         if ($('div.dg-footer', _settings._target).length == 0)
         {
             $(_settings._target).append('<div class="dg-footer"></div>');
@@ -255,7 +254,7 @@
     }
 
     /** Build Items Per Page Select Box **/
-    _buildItemsPerPageSelect = function(_settings) {
+    _buildItemsPerPageSelect = function() {
         if ($('.dg-items-per-page', _settings._target).length == 0)
         {
             var ipp_option_selected_index = -1;
@@ -272,14 +271,14 @@
                 ipp_options = '<option value="' + _settings.ipp + '" selected="selected">-</option>' + ipp_options;
             }
             $('.dg-header', _settings._target).append('<div class="dg-items-per-page"><select>' + ipp_options + '</select></div>').change(function(){
-                _setItemsPerPage(_settings);
+                _setItemsPerPage();
             });
-            _setIppCss(_settings);
+            _setIppCss();
         }
     }
 
     /** Will refresh datagrid with rows from datasource **/
-    _refreshRows = function(_settings) {
+    _refreshRows = function() {
         // reset num rows
         var numRows = 0;
         // table rows holder
@@ -338,15 +337,15 @@
         });
 
         // update datagrid UI
-        _updateNumRows(_settings, numRows);
-        _updatePages(_settings);
-        _buildFootCallbacks(_settings, tblData);
-        _buildTBody(_settings, tableRows);
-        _updateCellFx(_settings);
+        _updateNumRows(numRows);
+        _updatePages();
+        _buildFootCallbacks(tblData);
+        _buildTBody(tableRows);
+        _updateCellFx();
     }
 
     /** Build table body **/
-    _buildTBody = function(_settings, tableRows) {
+    _buildTBody = function(tableRows) {
         // always empty tbody before populate
         $('table.dg-display tbody', _settings._target).html('');
         // display data
@@ -354,7 +353,7 @@
     }
 
     /** Update Cells with given Functions **/
-    _updateCellFx = function(_settings) {
+    _updateCellFx = function() {
         if (_settings.fx.length > 0)
         {
             var i = 1;
@@ -371,7 +370,7 @@
     }
 
     /** Search Action **/
-    _searchAction = function(_settings, filter) {
+    _searchAction = function(filter) {
         // Check filter value
         if (filter != "")
         {
@@ -409,15 +408,15 @@
         // Reset page on search
         _settings._currentPage = 1;
         // Refresh row with extra param if
-        _refreshRows(_settings);
+        _refreshRows();
     }
 
     /** Load data from the server and place the returned HTML into target **/
-    _loadData = function(_settings) {
+    _loadData = function() {
         $.ajax({
             url: _settings.url,
             dataType: _settings.dataType,
-            data: _requestParams(_settings),
+            data: _requestParams(),
             type: 'post',
             beforeSend: function(responseData) {
                 _dbg('before send');
@@ -440,12 +439,12 @@
                     _settings._rawData = responseData;
                 }
                 // sort data
-                _sortJson(_settings);
+                _sortJson();
                 // refresh rows
-                _refreshRows(_settings);
-                _buildTitles(_settings);
-                _hideLoading(_settings);
-                _eventDataLoaded(_settings);
+                _refreshRows();
+                _buildTitles();
+                _hideLoading();
+                _eventDataLoaded();
             },
             error: function(responseData) {
                 _dbg("Ooops");
@@ -456,18 +455,18 @@
     }
 
     /** Update HTML with num rows after refresh **/
-    _updateNumRows = function(_settings, numRows) {
+    _updateNumRows = function(numRows) {
         _settings._numRows = numRows;
         $(".dg-items span", _settings._target).text('(' + numRows + ')');
     }
 
     /** Get number of rows returned from datasource **/
-    _getNumRows = function(_settings) {
+    _getNumRows = function() {
         return _settings._numRows;
     }
 
     /** Update pages after refresh **/
-    _updatePages = function(_settings) {
+    _updatePages = function() {
         // num pages float
         var numPagesFloat = (_settings._numRows / _settings.ipp);
         // round up num pages
@@ -555,7 +554,7 @@
         // add click event for pagination
         $(".dg-pagination ul li:not(.dg-items,.disabled)", _settings._target).click(function(e) {
             e.preventDefault();
-            _changePageFx(_settings, this);
+            _changePageFx(this);
             return false;
         });
         
@@ -564,7 +563,7 @@
     }
 
     /** Change Page Action **/
-    _changePageFx = function(_settings, elem) {
+    _changePageFx = function(elem) {
         // current page
         _settings._currentPage = parseInt(_settings._currentPage);
 
@@ -594,11 +593,11 @@
             _settings._currentPage = $(elem).text();
         }
         // refresh rows
-        _refreshRows(_settings);
+        _refreshRows();
     }
 
     /** Main Table CSS **/
-    _setTableCss = function(_settings) {
+    _setTableCss = function() {
         if (_settings.tableCss != '')
         {
             $('table.dg-display', _settings._target).addClass(_settings.tableCss);
@@ -606,7 +605,7 @@
     }
 
     /** Pagination Component CSS **/
-    _setPaginationCss = function(_settings) {
+    _setPaginationCss = function() {
         if (_settings.paginationCss != '')
         {
             $('.dg-pagination', _settings._target).addClass(_settings.paginationCss);
@@ -614,7 +613,7 @@
     }
 
     /** Items Per Page Component CSS **/
-    _setIppCss = function(_settings) {
+    _setIppCss = function() {
         if (_settings.ippCss!='')
         {
             $('.dg-items-per-page', _settings._target).addClass(_settings.ippCss);
@@ -622,17 +621,17 @@
     }
 
     /** Items Per Page Component **/
-    _setItemsPerPage = function(_settings) {
+    _setItemsPerPage = function() {
         if ($('.dg-items-per-page', _settings._target).length!=0)
         {
             _settings.ipp = $('.dg-items-per-page select', _settings._target).val();
             _settings._currentPage = 1;
-            _refreshRows(_settings);
+            _refreshRows();
         }
     }
 
     /** Sorting an array in js **/
-    _sortJson = function(_settings) {
+    _sortJson = function() {
         // Get order column index
         var index = _settings.colNames.indexOf(_settings.data.order_by);
         // Get order column direction
@@ -686,7 +685,7 @@
     }
 
     /** Build request params. If useLocalStorage add extra value **/
-    _requestParams = function(_settings) {
+    _requestParams = function() {
         // If useLocalStorage add crypted data to check if the response is diffrent
         if (_settings.useLocalStorage)
         {
@@ -718,7 +717,7 @@
     }
 
     /** Hide Loading **/
-    _hideLoading = function(_settings) {
+    _hideLoading = function() {
         $('.dg-loading', _settings._target).hide();
     }
 
@@ -769,7 +768,7 @@
         $.each(options, function(index,value){
             _settings.data[index] = value;
         });
-        _buildDatagrid(_settings);
+        _buildDatagrid();
     }
 
     $.fn.IODatagrid.defaults = {
