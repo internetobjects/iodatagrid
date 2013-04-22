@@ -679,9 +679,14 @@
         }
     }
 
+    /** Escape Regex Expression **/
+    _escapeExpression = function(str) {
+        return str.replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
+    };
+
     /** Match Expression **/
-    _matchExpresion = function(expresion, value) {
-        return RegExp(expresion, "i").test(value);
+    _matchExpresion = function(needle, haystack) {
+        return RegExp(_escapeExpression(needle), "i").test(haystack);
     }
 
     /** Build request params. If useLocalStorage add extra value **/
