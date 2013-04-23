@@ -2,124 +2,217 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2013-04-19
- * @version 1.4.3
- * 1. List - OK
- * 2. Add button - OK
- * 3. Pagination - OK
- * 4. AJAX Search - OK
- * 5. AJAX Ordering - OK
- * 6. JSON Search - OK
- * 7. JSON Ordering - OK
+ * @date    2013-04-23
+ * @version 1.5
  */
-(function ($) {
-    /**  Plugin class definition **/
-    var IODatagrid,
-        debug = false;
-    var _settings = null;
-    var jsonTempData = null;
+;(function ($) {
+    var debug = false;
+    var regex_num = new RegExp('^[0-9]+$'),
+        regex_float = new RegExp('^[0-9\.]+$'),
+        regex_date = new RegExp('^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}$');
 
-    IODatagrid = (function () {
-        /** Plugin constructor **/
-        function IODatagrid(element, options)
-        {
-            // settings
-            _settings = $.extend({}, $.fn.IODatagrid.defaults, options);
+    /** Plugin Public Methods **/
+    var methods = {
+        init : function( options ) {
+            // Create some defaults, extending them with any options that were provided
+            var options = $.extend({}, $.fn.IODatagrid.defaults, options);
 
-            // set target
-            _settings._target = $(element);
+            return this.each(function(){
+                var $this = $(this),
+                    data = $this.data('iodatagrid');
 
-            // build datagrid
-            _buildDatagrid();
+                // If the plugin hasn't been initialized yet
+                if ( !data )
+                {
+                    options._target = $this;
+                    data = {
+                        settings: options
+                    };
+                    $(this).data('iodatagrid', data);
+                }
+                // call datagrid builder
+                if (data && data.settings)
+                {
+                    _buildDatagrid(data.settings);
+                }
+                else
+                {
+                    alert('Problem with datagrid!');
+                }
+            });
+        },
+        destroy : function( ) {
+            return this.each(function(){
+                var $this = $(this);
+                // Namespacing FTW
+                $(window).unbind('.iodatagrid');
+                $this.removeData('iodatagrid');
+            });
+        },
+        refresh : function() {
+            return this.each(function(){
+                var $this = $(this),
+                    data = $this.data('iodatagrid');
+
+                // call datagrid builder
+                if (data && data.settings)
+                {
+                    _loadData(data.settings);
+                }
+                else
+                {
+                    _dbg('Cannot refresh datagrid!');
+                }
+            });
         }
+    };
 
-        /** Public methods **/
-        IODatagrid.prototype.refresh = function () {
-            _loadData();
-        };
-        IODatagrid.prototype.eventDataLoaded = function (fn) {
-            fn();
-        };
-        IODatagrid.prototype.destroy = function () {};
+    /** Plugin Definition */
+    $.fn.IODatagrid = function( method ) {
+        if ( methods[method] )
+        {
+            return methods[method].apply( this, Array.prototype.slice.call( arguments, 1 ));
+        }
+        else if ( typeof method === 'object' || ! method )
+        {
+            return methods.init.apply( this, arguments );
+        }
+        else
+        {
+            $.error( 'Method ' +  method + ' does not exist on jQuery.IODatagrid' );
+        }
+    };
 
-        return IODatagrid;
-    })();
+    /** Plugin Defaults **/
+    $.fn.IODatagrid.defaults = {
+        // private properties
+        _target: null,
+        _rawData: null,
+        _jsonTempData: null,
+        _numRows: 0,
+        _numPages: 0,
+        _currentPage: 1,
+        // public properties
+        url : "",
+        colFx: [],
+        colTitles: [],
+        colNames: [],
+        colExtraNames: [],
+        colWidths: [],
+        dataType: 'json',
+        data: {}, // request data
+        allowFilter: true,
+        allowDynamicFilter: false,
+        filterByFields: [],
+        filterByLabelText: "",
+        filterByLabelTextLength: 22, // if less than 22 chars, will be displayed as placeholder
+        orderByField: null,
+        orderByFieldDir: null,
+        searchLabelText: "Search",
+        showReloadButton: true,
+        reloadLabelText: "Reload",
+        ipp: 10, // items per page
+        ippOptions: [2, 5, 10, 20, 50, 100],
+        maxMenuItems: 5, // an odd value
+        loadingLabelText: "Loading table data... Please wait...",
+        itemsLabelText: "Items",
+        firstLabelText: "&laquo;",
+        prevLabelText: "&lsaquo;",
+        nextLabelText: "&rsaquo;",
+        lastLabelText: "&raquo;",
+        errorLoadingData: 'Error loading table data!',
+        iconOrderUp: "icon-chevron-up",
+        iconOrderDown: "icon-chevron-down",
+        iconOrderDefault: "icon-th",
+        width: 600,
+        height: 600,
+        tableCss: "table table-bordered table-striped",
+        paginationCss: "span7 pagination",
+        paginationPosition: "header",
+        ippCss: "span1",
+        useLocalStorage: true,
+        triggerAfterLoad: null
+    };
 
 
-    /** Private Methods **/
+    /** Plugin Private Methods **/
 
     /** Trigger event after load **/
-    _eventDataLoaded = function() {
-        if (typeof(_settings.triggerAfterLoad) === "function")
+    var _eventDataLoaded = function(options) {
+        if (typeof(options.triggerAfterLoad) === "function")
         {
-            _settings.triggerAfterLoad();
+            options.triggerAfterLoad();
         }
     }
 
     /** Build Datagrid **/
-    _buildDatagrid = function() {
-        _dbg('_buildDatagrid');
-        if (_settings.url!="")
+    var _buildDatagrid = function(options) {
+        if (options.url!="")
         {
-            _loadData();
-            _buildTable();
-            _buildTitles();
-            _attachClickEventToTitles();
-            _buildFooterTag();
-            _buildFilter();
-            _buildItemsPerPageSelect();
-            _buildPagination();
-            _buildFoot();
+            _loadData(options);
+            _buildTable(options);
+            _buildTitles(options);
+            _attachClickEventToTitles(options);
+            _buildHeaderTag(options);
+            _buildFooterTag(options);
+            _buildFilter(options);
+            _buildItemsPerPageSelect(options);
+            _buildPagination(options);
+            _buildFoot(options);
         }
     }
 
     /** Build Table **/
-    _buildTable = function() {
-        $('.dg-datagrid', _settings._target).html(
-            '<span class="dg-loading label">' +
-            _settings.dg_loading_text +
-            '</span><table class="dg-display" width="' +
-            _settings.width +
-            '"><thead></thead><tfoot></tfoot><tbody></tbody></table>'
+    var _buildTable = function(options) {
+        // if datagrid doesn't exist, create it
+        if ($('.dg-datagrid', options._target).length==0)
+        {
+            $(options._target).append('<div class="dg-datagrid"></div>');
+        }
+        $('.dg-datagrid', options._target).html(
+            '<span class="dg-loading label">' + options.loadingLabelText + '</span>'+
+            '<table class="dg-display" width="' + options.width + '">'+
+                '<thead></thead>'+
+                '<tbody></tbody>'+
+                '<tfoot></tfoot>'+
+            '</table>'
         );
-        _setTableCss();
+        _setTableCss(options);
     }
 
     /** Build Titles **/
-    _buildTitles = function() {
-        _dbg('titles');
-        var $thead = $('table.dg-display thead', _settings._target);
+    var _buildTitles = function(options) {
+        var $thead = $('table.dg-display thead', options._target);
         var col = '',
             style = '',
-            order_by = '';
-        if (typeof(_settings.colTitles) === 'object')
+            orderByFieldLink = '';
+        if (typeof(options.colTitles) === 'object')
         {
             $thead.find('tr').remove();
 
-            $.each(_settings.colTitles, function(index, val) {
+            $.each(options.colTitles, function(index, val) {
                 // style
-                style = (_settings.colWidths[index]!=undefined && _settings.colWidths[index]!="" ? ' style="width:' + _settings.colWidths[index] + ';"' : '');
+                style = (options.colWidths[index]!=undefined && options.colWidths[index]!="" ? ' style="width:' + options.colWidths[index] + ';"' : '');
 
                 // order by
-                order_by = '';
-                if (_settings.colOrder[index]!=undefined && _settings.colOrder[index]!='')
+                orderByFieldLink = '';
+                if (options.colOrder[index]!=undefined && options.colOrder[index]!='')
                 {
-                    order_by = '<a href="#" class="pull-right"';
-                    if (_settings.data.order_by && _settings.data.order_dir && _settings.colNames[index]==_settings.data.order_by)
+                    orderByFieldLink = '<a href="javascript:;" class="pull-right"';
+                    if (options.orderByField && options.orderByFieldDir && options.colNames[index]==options.orderByField)
                     {
-                        order_by += ' order-by="'+_settings.colNames[index]+'" order-dir="'+
-                                    (_settings.data.order_dir=='asc' ? 'desc' : 'asc')+'">';
-                        order_by += '<i class="' + (_settings.data.order_dir=='asc' ? _settings.icon_order_up : _settings.icon_order_down) + '"></i>';
+                        orderByFieldLink += ' order-by="'+options.colNames[index]+'" order-dir="'+
+                                    (options.orderByFieldDir=='asc' ? 'desc' : 'asc')+'">';
+                        orderByFieldLink += '<i class="' + (options.orderByFieldDir=='asc' ? options.iconOrderUp : options.iconOrderDown) + '"></i>';
                     }
                     else
                     {
-                        order_by += ' order-by="'+_settings.colNames[index]+'" order-dir="' +
-                                    _settings.colOrder[index]+'">';
-                        order_by += '<i class="icon-th"></i>';
+                        orderByFieldLink += ' order-by="'+options.colNames[index]+'" order-dir="' + options.colOrder[index]+'">';
+                        orderByFieldLink += '<i class="'+options.iconOrderDefault+'"></i>';
                     }
-                    order_by += '</a>';
+                    orderByFieldLink += '</a>';
                 }
-                col += '<th' + style + '>' + val + order_by + '</th>';
+                col += '<th' + style + '>' + val + orderByFieldLink + '</th>';
             });
 
             $thead.prepend('<tr>' + col + '</tr>');
@@ -127,34 +220,32 @@
     }
 
     /** Attach Click Event to Order Links **/
-    _attachClickEventToTitles = function() {
-        $('table.dg-display thead', _settings._target).delegate('a', 'click', function(e){
+    var _attachClickEventToTitles = function(options) {
+        $('table.dg-display thead', options._target).delegate('a', 'click', function(e){
             e.preventDefault();
             // Set new ordering values
-            var data = _settings.data;
-            data.order_by = $(this).attr('order-by');
-            data.order_dir = $(this).attr('order-dir');
-            _settings.data = data;
+            options.orderByField = $(this).attr('order-by');
+            options.orderByFieldDir = $(this).attr('order-dir');
             // Sort json according to order params
-            _sortJson();
+            _sortJson(options);
             // Refresh table rows after json ordering
-            _refreshRows();
+            _refreshRows(options);
             // Build title with new ordering values
-            _buildTitles();
+            _buildTitles(options);
             return false;
         });
     }
 
     /** Build table foot columns **/
-    _buildFoot = function()
+    var _buildFoot = function(options)
     {
-        if (_settings.fxFootCallbacks != undefined) {
-            var $tfoot = $('table.dg-display tfoot', _settings._target);
-            if (typeof(_settings.colTitles) === 'object')
+        if (options.fxFootCallbacks != undefined) {
+            var $tfoot = $('table.dg-display tfoot', options._target);
+            if (typeof(options.colTitles) === 'object')
             {
                 $tfoot.find('tr').remove();
                 var col = '';
-                $.each(_settings.colTitles, function(index, val) {
+                $.each(options.colTitles, function(index, val) {
                     col += '<th></th>';
                 });
                 $tfoot.prepend('<tr>' + col + '</tr>');
@@ -163,10 +254,10 @@
     }
 
     /** Build table foot callbacks **/
-    _buildFootCallbacks = function(data) {
-        if (_settings.fxFootCallbacks != undefined) {
+    var _buildFootCallbacks = function(options, data) {
+        if (options.fxFootCallbacks != undefined) {
             var i = 1;
-            $.each(_settings.fxFootCallbacks, function(index, fxFootCallbacks) {
+            $.each(options.fxFootCallbacks, function(index, fxFootCallbacks) {
                 if (typeof(fxFootCallbacks) === 'function')
                 {
                     fxFootCallbacks(index, data);
@@ -176,122 +267,155 @@
         }
     }
 
+    /** Build Header Tag **/
+    var _buildHeaderTag = function(options) {
+        if ($('div.dg-header', options._target).length == 0)
+        {
+            $(options._target).prepend('<div class="dg-header row"></div>');
+        }
+    }
+
     /** Build Pagination **/
-    _buildPagination = function() {
+    var _buildPagination = function(options) {
         // if pagination div doesn't exist in header
-        if ($('.dg-pagination', _settings._target).length==0)
+        if ($('.dg-pagination', options._target).length==0)
         {
             var paginationUI = '<ul>'+
-                                    '<li class="dg-items disabled"><a href="#">'+_settings.dg_items_text+' <span></span></a></li>'+
-                                    '<li class="dg-first-last dg-first"><a href="#">'+_settings.dg_first_text+'</a></li>'+
-                                    '<li class="dg-prev-next dg-prev"><a href="#">'+_settings.dg_prev_text+'</a></li>'+
-                                    '<li class="dg-prev-next dg-next"><a href="#">'+_settings.dg_next_text+'</a></li>'+
-                                    '<li class="dg-first-last dg-last"><a href="#">'+_settings.dg_last_text+'</a></li>'+
-                                    '</ul>';
+                                    '<li class="dg-items disabled"><a href="javascript:;">'+options.itemsLabelText+' <span></span></a></li>'+
+                                    '<li class="dg-first-last dg-first"><a href="javascript:;">'+options.firstLabelText+'</a></li>'+
+                                    '<li class="dg-prev-next dg-prev"><a href="javascript:;">'+options.prevLabelText+'</a></li>'+
+                                    '<li class="dg-prev-next dg-next"><a href="javascript:;">'+options.nextLabelText+'</a></li>'+
+                                    '<li class="dg-first-last dg-last"><a href="javascript:;">'+options.lastLabelText+'</a></li>'+
+                                '</ul>';
             // if position in header
-            if (_settings.paginationPosition=='header')
+            if (options.paginationPosition=='header')
             {
-                $('.dg-header', _settings._target).prepend('<div class="dg-pagination">'+paginationUI+'</div>');
+                $('.dg-header', options._target).prepend('<div class="dg-pagination">'+paginationUI+'</div>');
             }
             // if position in footer
-            else if (_settings.paginationPosition=='footer')
+            else if (options.paginationPosition=='footer')
             {
-                $('.dg-footer', _settings._target).prepend('<div class="dg-pagination">'+paginationUI+'</div>');
+                $('.dg-footer', options._target).prepend('<div class="dg-pagination">'+paginationUI+'</div>');
             }
             // set extra pagination css if requested
-            _setPaginationCss();
+            _setPaginationCss(options);
         }
     }
 
     /** Build Filter **/
-    _buildFilter = function() {
-        if (_settings.filter)
+    var _buildFilter = function(options) {
+        if (options.allowFilter)
         {
-            if ($('.dg-header', _settings._target).length==0)
+            var placeHolder = options.filterByLabelText.length>options.filterByLabelTextLength ? '' : options.filterByLabelText;
+            var filterByLabelText = options.filterByLabelText.length>options.filterByLabelTextLength ? options.filterByLabelText : '';
+
+            // create search ui element if not exists
+            if ($('.dg-search', options._target).length==0)
             {
-                $('.dg-header', _settings._target).append('<input class="dg-filter" value="" />');
+                $('.dg-header', options._target).prepend(
+                    '<div class="dg-search span4">'+
+                        '<div class="input-append">'+
+                            '<input class="dg-filter span2" type="text" value="" placeholder="'+placeHolder+'" />'+
+                            '<button class="dg-submit btn" type="submit">'+options.searchLabelText+'</button>'+
+                            '<button class="dg-reload btn btn-primary"><i class="icon-refresh icon-white"></i>'+
+                                (options.reloadLabelText!="" ? " "+options.reloadLabelText : "")+
+                            '</button>'+
+                        '</div>'+
+                        '<div class="dg-searchby">'+
+                            '<em>'+filterByLabelText+'</em>'+
+                        '</div>'+
+                    '</div>'
+                );
             }
             // search by keyup
-            if ($('.dg-submit', _settings._target).length==0)
+            if ($('.dg-submit', options._target).length==0)
             {
-                $('.dg-filter', _settings._target).keyup(function(){
-                    _dbg($(this).val());
-                    _searchAction($(this).val());
+                $('.dg-filter', options._target).keyup(function(){
+                    _searchAction(options, $(this).val());
                 });
             }
             // or by button click
             else
             {
                 // click on search button
-                $('.dg-submit', _settings._target).click(function(event){
+                $('.dg-submit', options._target).click(function(event){
                     event.preventDefault();
-                    _dbg($('.dg-filter', _settings._target).val());
-                    _searchAction($('.dg-filter', _settings._target).val());
+                    _searchAction(options, $('.dg-filter', options._target).val());
                     return false;
                 });
                 // trigger search on Enter
-                $('.dg-filter', _settings._target).keyup(function(event){
-                    if (_settings.filter_dynamic || event.keyCode == 13)
+                $('.dg-filter', options._target).keyup(function(event){
+                    if (options.allowDynamicFilter || event.keyCode == 13)
                     {
-                        $(".dg-submit", _settings._target).click();
+                        $(".dg-submit", options._target).click();
                     }
                 });
             }
             // search by
-            if ($('.dg-searchby', _settings._target).length==0 && _settings.filter_by_label!="")
+            if ($('.dg-searchby', options._target).length==0 && options.filterByLabelText!="")
             {
-                $('.dg-search', _settings._target).append('<div class="dg-searchby"><em>'+_settings.filter_by_label+'</em></div>');
+                $('.dg-search', options._target).append(
+                    '<div class="dg-searchby">'+
+                        '<em>'+options.filterByLabelText+'</em>'+
+                    '</div>'
+                );
             }
+            // click on reload button
+            $('.dg-reload', options._target).click(function(event){
+                event.preventDefault();
+                _loadData(options);
+                return false;
+            });
         }
     }
 
     /** Build Footer Tag **/
-    _buildFooterTag = function() {
-        if ($('div.dg-footer', _settings._target).length == 0)
+    var _buildFooterTag = function(options) {
+        if ($('div.dg-footer', options._target).length == 0)
         {
-            $(_settings._target).append('<div class="dg-footer"></div>');
+            $(options._target).append('<div class="dg-footer"></div>');
         }
     }
 
     /** Build Items Per Page Select Box **/
-    _buildItemsPerPageSelect = function() {
-        if ($('.dg-items-per-page', _settings._target).length == 0)
+    var _buildItemsPerPageSelect = function(options) {
+        if ($('.dg-items-per-page', options._target).length == 0)
         {
-            var ipp_option_selected_index = -1;
-            var ipp_options = '';
-            $.each(_settings.ipp_options, function(index, val) {
-                if (val==_settings.ipp)
+            var ippOptionSelectedIndex = -1;
+            var ippOptions = '';
+            $.each(options.ippOptions, function(index, val) {
+                if (val==options.ipp)
                 {
-                    ipp_option_selected_index = index;
+                    ippOptionSelectedIndex = index;
                 }
-                ipp_options += '<option value="' + val + '"' + (val==_settings.ipp ? ' selected="selected"' : '') + '>'+val+'</option>';
+                ippOptions += '<option value="' + val + '"' + (val==options.ipp ? ' selected="selected"' : '') + '>'+val+'</option>';
             });
-            if (ipp_option_selected_index==-1)
+            if (ippOptionSelectedIndex==-1)
             {
-                ipp_options = '<option value="' + _settings.ipp + '" selected="selected">-</option>' + ipp_options;
+                ippOptions = '<option value="' + options.ipp + '" selected="selected">-</option>' + ippOptions;
             }
-            $('.dg-header', _settings._target).append('<div class="dg-items-per-page"><select>' + ipp_options + '</select></div>').change(function(){
-                _setItemsPerPage();
+            $('.dg-header', options._target).append('<div class="dg-items-per-page"><select>' + ippOptions + '</select></div>').change(function(){
+                _setItemsPerPage(options);
             });
-            _setIppCss();
+            _setIppCss(options);
         }
     }
 
     /** Will refresh datagrid with rows from datasource **/
-    _refreshRows = function() {
+    var _refreshRows = function(options) {
         // reset num rows
         var numRows = 0;
         // table rows holder
         var tableRows = '';
         // page start / end
-        var limitStart = ((_settings._currentPage - 1) * _settings.ipp);
-        var limitEnd = (_settings.ipp * _settings._currentPage);
+        var limitStart = ((options._currentPage - 1) * options.ipp);
+        var limitEnd = (options.ipp * options._currentPage);
         // table head
-        var tblHead = _settings._rawData.head;
+        var tblHead = options._rawData.head;
         // table data
-        var tblData = _settings._rawData.data;
+        var tblData = options._rawData.data;
         // Search into parent json or in the filtered json
-        var searchObject = (jsonTempData != null) ? jsonTempData : tblData;
+        var searchObject = (options._jsonTempData != null) ? options._jsonTempData : tblData;
 
         // for each line from datasource matching our needs
         $.each(searchObject, function (searchObjectRowIndex, searchObjectRow) {
@@ -302,7 +426,7 @@
                 var tableRow = '';
 
                 // iterate through all column names and display only the requested fields
-                $.each(_settings.colNames, function(colNameIndex, colName) {
+                $.each(options.colNames, function(colNameIndex, colName) {
                     // index of item in json data head
                     var colNameIndexInHead = $.inArray(colName, tblHead);
 
@@ -312,7 +436,7 @@
                     {
                         var rowValue = '';
                         // first get value at index of colName, if any
-                        if (searchObjectRow[colNameIndex]!==undefined)
+                        if (searchObjectRow[colNameIndex]!==undefined && colName)
                         {
                             rowValue = searchObjectRow[colNameIndex];
                         }
@@ -337,138 +461,141 @@
         });
 
         // update datagrid UI
-        _updateNumRows(numRows);
-        _updatePages();
-        _buildFootCallbacks(tblData);
-        _buildTBody(tableRows);
-        _updateCellFx();
+        _updateNumRows(options, numRows);
+        _updatePages(options);
+        _buildFootCallbacks(options, tblData);
+        _buildTBody(options, tableRows);
+        _updateCellFx(options, searchObject);
     }
 
     /** Build table body **/
-    _buildTBody = function(tableRows) {
+    var _buildTBody = function(options, tableRows) {
         // always empty tbody before populate
-        $('table.dg-display tbody', _settings._target).html('');
+        $('table.dg-display tbody', options._target).html('');
         // display data
-        $('table.dg-display tbody', _settings._target).html( tableRows );
+        $('table.dg-display tbody', options._target).html( tableRows );
     }
 
     /** Update Cells with given Functions **/
-    _updateCellFx = function() {
-        if (_settings.fx.length > 0)
+    var _updateCellFx = function(options, searchObject) {
+        if (options.colFx.length > 0)
         {
-            var i = 1;
-            $.each(_settings.fx, function(index, fx) {
-                if (typeof(fx) === 'function')
+            var colIndex = 1;
+            $.each(options.colFx, function(index, colFx) {
+                if (typeof(colFx) === 'function')
                 {
-                    $.each($('table.dg-display tbody tr > :nth-child(' + i + ')', _settings._target), function() {
-                        fx(this, _settings._rawData.data);
+                    $.each($('table.dg-display tbody tr > :nth-child(' + colIndex + ')', options._target), function() {
+                        colFx(this, searchObject, colIndex);
                     });
                 }
-                i++;
+                colIndex++;
             });
         }
     }
 
     /** Search Action **/
-    _searchAction = function(filter) {
+    var _searchAction = function(options, searchStr) {
         // Check filter value
-        if (filter != "")
+        if (searchStr != "")
         {
+            // filter by fields
+            var filterByFields = options.filterByFields;
+
             // Init response json
-            jsonTempData = [];
+            options._jsonTempData = [];
+
             // Parse parent json
-            $.each(_settings._rawData.data, function(index, value){
-                var match = false;
-                $.each(this, function(i, v) {
-                    if (_settings.data.filter_by_fields != undefined)
+            $.each(options._rawData.data, function(rowIndex, rowData){
+                var matchFound = false;
+
+                // iterate through each value from row
+                $.each(this, function(cellIndex, cellData) {
+                    // if no filter by fields set or field is in filter by fields array
+                    if (filterByFields.length == 0 || (filterByFields.length != 0 && $.inArray(options.colNames[cellIndex], filterByFields) != -1))
                     {
-                        if ($.inArray(_settings.colNames[i], _settings.data.filter_by_fields) != -1)
+                        // if a match was found...
+                        if (_matchExpresion(searchStr, cellData))
                         {
-                            if (_matchExpresion(filter, v))
-                                match = true;
+                            matchFound = true;
                         }
                     }
-                    else
-                    {
-                        if (_matchExpresion(filter, v))
-                            match = true;
-                    }
                 });
-                // If any value found add it
-                if (match)
+
+                // If any value found, add the row
+                if (matchFound)
                 {
-                    jsonTempData.push(value);
+                    options._jsonTempData.push(rowData);
                 }
             });
         }
         else
         {
-            jsonTempData = null;
+            options._jsonTempData = null;
         }
         // Reset page on search
-        _settings._currentPage = 1;
+        options._currentPage = 1;
+        // Sort json according to order params
+        _sortJson(options);
         // Refresh row with extra param if
-        _refreshRows();
+        _refreshRows(options);
     }
 
     /** Load data from the server and place the returned HTML into target **/
-    _loadData = function() {
+    var _loadData = function(options) {
         $.ajax({
-            url: _settings.url,
-            dataType: _settings.dataType,
-            data: _requestParams(),
+            url: options.url,
+            dataType: options.dataType,
+            data: _requestParams(options),
             type: 'post',
             beforeSend: function(responseData) {
-                _dbg('before send');
-                $('.dg-loading', _settings._target).show();
+                $('.dg-loading', options._target).show();
             },
             success: function(responseData) {
-                _dbg('data loaded OK');
-
-                if (_settings.useLocalStorage && responseData !== false)
+                if (options.useLocalStorage && responseData !== false)
                 {
                     _setLocalStorage(responseData);
-                    _settings._rawData = JSON.parse(_getLocalStorageValue('jsonData'));
+                    options._rawData = JSON.parse(_getLocalStorageValue('jsonData'));
                 }
-                else if (_settings.useLocalStorage && responseData === false)
+                else if (options.useLocalStorage && responseData === false)
                 {
-                    _settings._rawData = JSON.parse(_getLocalStorageValue('jsonData'));
+                    options._rawData = JSON.parse(_getLocalStorageValue('jsonData'));
                 }
                 else
                 {
-                    _settings._rawData = responseData;
+                    options._rawData = responseData;
                 }
                 // sort data
-                _sortJson();
+                _sortJson(options);
                 // refresh rows
-                _refreshRows();
-                _buildTitles();
-                _hideLoading();
-                _eventDataLoaded();
+                _refreshRows(options);
+                // build titles
+                _buildTitles(options);
+                // hide loading
+                _hideLoading(options);
+                // trigger events
+                _eventDataLoaded(options);
             },
             error: function(responseData) {
-                _dbg("Ooops");
-                _dbg(responseData.responseText);
-                _dbg(responseData);
+                alert(options.errorLoadingData);
             }
         });
     }
 
     /** Update HTML with num rows after refresh **/
-    _updateNumRows = function(numRows) {
-        _settings._numRows = numRows;
-        $(".dg-items span", _settings._target).text('(' + numRows + ')');
+    var _updateNumRows = function(options, numRows) {
+        options._numRows = numRows;
+        $(".dg-items span", options._target).text('(' + numRows + ')');
     }
 
     /** Get number of rows returned from datasource **/
-    _getNumRows = function() {
-        return _settings._numRows;
+    var _getNumRows = function(options) {
+        return options._numRows;
     }
 
     /** Update pages after refresh **/
-    _updatePages = function() {
+    var _updatePages = function(options) {
         // num pages float
-        var numPagesFloat = (_settings._numRows / _settings.ipp);
+        var numPagesFloat = (options._numRows / options.ipp);
         // round up num pages
         var numPages = parseInt(numPagesFloat);
         if (numPagesFloat > parseInt(numPagesFloat))
@@ -476,13 +603,13 @@
             numPages++;
         }
         // current page
-        var currentPage = _settings._currentPage;
+        var currentPage = options._currentPage;
 
         // remove "disabled" class from all menu items
-        $('.dg-pagination ul li:not(.dg-items)', _settings._target).removeClass('disabled');
+        $('.dg-pagination ul li:not(.dg-items)', options._target).removeClass('disabled');
 
         // start, end menu items
-        var maxMenuItems = (_settings.max_menu_items%2==0 ? (_settings.max_menu_items+1) : _settings.max_menu_items);
+        var maxMenuItems = (options.maxMenuItems%2==0 ? (options.maxMenuItems+1) : options.maxMenuItems);
         var startItemIndex = 1;
         var endItemIndex = numPages;
 
@@ -518,192 +645,206 @@
         // disable some menu items
         if (numPages==1 || numPages==0)
         {
-            $('.dg-pagination ul li', _settings._target).addClass('disabled');
+            $('.dg-pagination ul li', options._target).addClass('disabled');
         }
         else if (currentPage==1)
         {
-            $('.dg-pagination ul li.dg-first-last', _settings._target).first().addClass('disabled');
-            $('.dg-pagination ul li.dg-prev-next', _settings._target).first().addClass('disabled');
+            $('.dg-pagination ul li.dg-first-last', options._target).first().addClass('disabled');
+            $('.dg-pagination ul li.dg-prev-next', options._target).first().addClass('disabled');
         }
         else if (currentPage==numPages)
         {
-            $('.dg-pagination ul li.dg-first-last', _settings._target).last().addClass('disabled');
-            $('.dg-pagination ul li.dg-prev-next', _settings._target).last().addClass('disabled');
+            $('.dg-pagination ul li.dg-first-last', options._target).last().addClass('disabled');
+            $('.dg-pagination ul li.dg-prev-next', options._target).last().addClass('disabled');
         }
-        
+
         // unbind click events from li's
-        $('.dg-pagination ul li', _settings._target).unbind('click');
-        $('.dg-pagination ul li.dg-page-item', _settings._target).remove();
+        $('.dg-pagination ul li', options._target).unbind('click');
+        $('.dg-pagination ul li.dg-page-item', options._target).remove();
 
         // add pagination li items
         var selector = '.dg-items';
-        if ($('.dg-pagination ul li.dg-prev-next', _settings._target).length!=0)
+        if ($('.dg-pagination ul li.dg-prev-next', options._target).length!=0)
             selector = '.dg-prev-next';
-        else if ($('.dg-pagination ul li.dg-first-last', _settings._target).length!=0)
+        else if ($('.dg-pagination ul li.dg-first-last', options._target).length!=0)
             selector = '.dg-first-last';
 
         // create numbered menu items
         var menuItemLi = '';
         for(i = startItemIndex; i <= endItemIndex; i++)
         {
-            menuItemLi += '<li class="dg-page-item'+(i==currentPage ? ' active' : '')+'"><a href="#">' + i + '</a></li>';
+            menuItemLi += '<li class="dg-page-item'+(i==currentPage ? ' active' : '')+'"><a href="javascript:;">' + i + '</a></li>';
         }
         // add li's after first found item in selector
-        $(".dg-pagination ul "+selector, _settings._target).first().after(menuItemLi);
+        $(".dg-pagination ul "+selector, options._target).first().after(menuItemLi);
 
         // add click event for pagination
-        $(".dg-pagination ul li:not(.dg-items,.disabled)", _settings._target).click(function(e) {
+        $(".dg-pagination ul li:not(.dg-items,.disabled)", options._target).click(function(e) {
             e.preventDefault();
-            _changePageFx(this);
+            _changePageFx(options, this);
             return false;
         });
-        
+
         // set number of pages
-        _settings._numPages = numPages;
+        options._numPages = numPages;
     }
 
     /** Change Page Action **/
-    _changePageFx = function(elem) {
+    var _changePageFx = function(options, elem) {
         // current page
-        _settings._currentPage = parseInt(_settings._currentPage);
+        options._currentPage = parseInt(options._currentPage);
 
         // goto previous page
         if ($(elem).hasClass('dg-prev'))
         {
-            if (_settings._currentPage>1) _settings._currentPage--;
+            if (options._currentPage>1) options._currentPage--;
         }
         // goto next page
         else if ($(elem).hasClass('dg-next'))
         {
-            if (_settings._currentPage<_settings._numPages) _settings._currentPage++;
+            if (options._currentPage<options._numPages) options._currentPage++;
         }
         // goto first page
         else if ($(elem).hasClass('dg-first'))
         {
-            _settings._currentPage = 1;
+            options._currentPage = 1;
         }
         // goto last page
         else if ($(elem).hasClass('dg-last'))
         {
-            _settings._currentPage = _settings._numPages;
+            options._currentPage = options._numPages;
         }
         // other pages
         else
         {
-            _settings._currentPage = $(elem).text();
+            options._currentPage = $(elem).text();
         }
         // refresh rows
-        _refreshRows();
+        _refreshRows(options);
     }
 
     /** Main Table CSS **/
-    _setTableCss = function() {
-        if (_settings.tableCss != '')
+    var _setTableCss = function(options) {
+        if (options.tableCss != '')
         {
-            $('table.dg-display', _settings._target).addClass(_settings.tableCss);
+            $('table.dg-display', options._target).addClass(options.tableCss);
         }
     }
 
     /** Pagination Component CSS **/
-    _setPaginationCss = function() {
-        if (_settings.paginationCss != '')
+    var _setPaginationCss = function(options) {
+        if (options.paginationCss != '')
         {
-            $('.dg-pagination', _settings._target).addClass(_settings.paginationCss);
+            $('.dg-pagination', options._target).addClass(options.paginationCss);
         }
     }
 
     /** Items Per Page Component CSS **/
-    _setIppCss = function() {
-        if (_settings.ippCss!='')
+    var _setIppCss = function(options) {
+        if (options.ippCss!='')
         {
-            $('.dg-items-per-page', _settings._target).addClass(_settings.ippCss);
+            $('.dg-items-per-page', options._target).addClass(options.ippCss);
         }
     }
 
     /** Items Per Page Component **/
-    _setItemsPerPage = function() {
-        if ($('.dg-items-per-page', _settings._target).length!=0)
+    var _setItemsPerPage = function(options) {
+        if ($('.dg-items-per-page', options._target).length!=0)
         {
-            _settings.ipp = $('.dg-items-per-page select', _settings._target).val();
-            _settings._currentPage = 1;
-            _refreshRows();
+            options.ipp = $('.dg-items-per-page select', options._target).val();
+            options._currentPage = 1;
+            _refreshRows(options);
         }
     }
 
     /** Sorting an array in js **/
-    _sortJson = function() {
+    var _sortJson = function(options) {
         // Get order column index
-        var index = _settings.colNames.indexOf(_settings.data.order_by);
+        var index = options.colNames.indexOf(options.orderByField);
         // Get order column direction
-        var order = _settings.data.order_dir;
+        var orderDir = options.orderByFieldDir;
 
         // Sort search json if any
-        if (jsonTempData != null)
+        if (options._jsonTempData != null)
         {
-            jsonTempData.sort(function(a, b){
-                return _compare(a, b, index, order);
+            options._jsonTempData.sort(function(a, b){
+                return _compare(a[index], b[index], orderDir);
             });
         }
         // Sort initial json
         else
         {
-            _settings._rawData.data.sort(function(a, b){
-                return _compare(a, b, index, order);
+            options._rawData.data.sort(function(a, b){
+                return _compare(a[index], b[index], orderDir);
             });
         }
     }
 
     /**
-     * Order array based on the relationship between each pair of elements "a" and "b"
-     * @param a - Array of data
-     * @param b - Array of data
-     * @param index - Index of order column
-     * @param order_dir - Order direction of order column
+     * Order array based on the relationship between each pair of elements "str1" and "str2"
+     * @param str1 - String 1 to compare
+     * @param str2 - String 2 to compare
+     * @param orderDir - Order direction of order column
      */
-    _compare = function(a, b, index, order_dir) {
-        // cast strings to int
-        var str1 = parseInt(a[index], 10);
-        var str2 = parseInt(b[index], 10);
-        // compare numbers
-        if (!isNaN(str1) && !isNaN(str2))
+    var _compare = function(str1, str2, orderDir) {
+        // compare dates
+        if (regex_date.test(str1) && regex_date.test(str2))
         {
-            if (order_dir == "asc") return (a[index] - b[index]);
-            else return (b[index] - a[index]);
-
+            var d1 = parseInt(str1.replace(/-/g, ''), 10);
+            var d2 = parseInt(str2.replace(/-/g, ''), 10);
+            if (orderDir == "asc") return (d1 > d2);
+            else return (d1 < d2);
+        }
+        // compare numbers
+        else if (regex_num.test(str1) && regex_num.test(str2))
+        {
+            var n1 = parseInt(str1, 10);
+            var n2 = parseInt(str2, 10);
+            if (orderDir == "asc") return (n1 - n2);
+            else return (n2 - n1);
+        }
+        // compare float numbers
+        else if (regex_float.test(str1) && regex_float.test(str2))
+        {
+            var n1 = parseInt(str1*100, 10);
+            var n2 = parseInt(str2*100, 10);
+            if (orderDir == "asc") return (n1 - n2);
+            else return (n2 - n1);
         }
         // compare strings
         else
         {
-            if (order_dir == "asc") return (a[index] > b[index]);
-            else return (b[index] > a[index]);
+            if (orderDir == "asc") return (str1 > str2);
+            else return (str1 < str2);
         }
     }
 
     /** Escape Regex Expression **/
-    _escapeExpression = function(str) {
+    var _escapeExpression = function(str) {
         return str.replace(/([.?*+^$[\]\\(){}|-])/g, "\\$1");
     };
 
     /** Match Expression **/
-    _matchExpresion = function(needle, haystack) {
-        return RegExp(_escapeExpression(needle), "i").test(haystack);
+    var _matchExpresion = function(needle, haystack) {
+        var expression = _escapeExpression(needle);
+        return RegExp(expression, "i").test(haystack);
     }
 
     /** Build request params. If useLocalStorage add extra value **/
-    _requestParams = function() {
+    var _requestParams = function(options) {
         // If useLocalStorage add crypted data to check if the response is diffrent
-        if (_settings.useLocalStorage)
+        if (options.useLocalStorage)
         {
-            _settings.data.sha1 = _getLocalStorageValue('sha1Data');
+            options.data.sha1 = _getLocalStorageValue('sha1Data');
         }
-        return _settings.data;
+        return options.data;
     }
 
     /**
      * Retrieve the value of the required key
      * @param index - key storage
      */
-    _getLocalStorageValue = function(index) {
+    var _getLocalStorageValue = function(index) {
         // Check if browser supports localStorage and retrieve value
         return ((typeof(Storage) !== "undefined" && localStorage.getItem(index)) ? localStorage.getItem(index) : false);
     }
@@ -712,7 +853,7 @@
      * Store needed value to localstorage
      * @param paramsData - data to store
      */
-    _setLocalStorage = function(paramsData){
+    var _setLocalStorage = function(paramsData){
         // Check if browser supports localStorage and set values
         if ((typeof(Storage) !== "undefined"))
         {
@@ -722,102 +863,19 @@
     }
 
     /** Hide Loading **/
-    _hideLoading = function() {
-        $('.dg-loading', _settings._target).hide();
+    var _hideLoading = function(options) {
+        $('.dg-loading', options._target).hide();
     }
 
     /** Debug Component **/
-    _dbg = function(info) {
+    var _dbg = function(info) {
         if (debug)
         {
-            if ($("#dg_dbg").length == 0)
+            if ($("#dg-debug").length == 0)
             {
-                $("body").append('<hr /><div id="dg_dbg"><div>');
+                $("body").append('<hr /><div id="dg-debug"><div>');
             }
-            $('#dg_dbg').prepend('<div>' + info + '</div>');
+            $('#dg-debug').prepend('<div class="well">' + info + '</div>');
         }
     }
-
-    /** Plugin definition */
-    $.fn.IODatagrid = function (options) {
-        if (options=='destroy')
-        {
-            this.removeData('IODatagrid');
-        }
-        else if (options=='refresh')
-        {
-            var instance;
-            instance = this.data('IODatagrid');
-            if (instance)
-            {
-                instance.refresh();
-            }
-        }
-        else
-        {
-            var instance;
-            instance = this.data('IODatagrid');
-            if (!instance)
-            {
-                return this.each(function () {
-                    return $(this).data('IODatagrid', new IODatagrid(this, options));
-                });
-            }
-            if (options === true) return instance;
-            if ($.type(options) === 'string') instance[options]();
-            return this;
-        }
-    };
-
-    $.fn.IODatagrid.reload = function(options) {
-        $.each(options, function(index,value){
-            _settings.data[index] = value;
-        });
-        _buildDatagrid();
-    }
-
-    $.fn.IODatagrid.defaults = {
-        _numRows: 0,
-        _rawData: null,
-        _currentPage: 1,
-        _numPages: null,
-        datasource: "json", // options: 'json' (default)
-        url : "",
-        data: {
-            /** specific fields to get from ajax; by default: it will take all that comes from model and display only the fields found in colNames array **/
-            fields: [],
-            filter_by_fields: [],
-            order_by: null,
-            order_dir: null
-        },
-        dataType: 'json',
-        width: 600,
-        height: 600,
-        tableCss: "table table-bordered table-striped",
-        paginationCss: "span7 pagination",
-        paginationPosition: "header",
-        ippCss: "span1",
-        colTitles: [],
-        colNames: [],
-        colExtraNames: [],
-        colWidths: [],
-        filter: true,
-        filter_by: "",
-        filter_by_label: "",
-        filter_dynamic: false,
-        ipp: 10, // items per page
-        ipp_options: [2, 5, 10, 20, 50, 100],
-        max_menu_items: 5, // an odd value
-        dg_loading_text: "Loading table data... Please wait...",
-        dg_items_text: "Items",
-        dg_first_text: "&laquo;",   // translate('list_paging_first'),
-        dg_prev_text: "&lsaquo;",   // translate('list_paging_previous'),
-        dg_next_text: "&rsaquo;",   // translate('list_paging_next'),
-        dg_last_text: "&raquo;",    // translate('list_paging_last'),
-        icon_order_up: "icon-chevron-up",
-        icon_order_down: "icon-chevron-down",
-        icon_order_default: "icon-th",
-        triggerAfterLoad: null,
-        useLocalStorage: true
-    };
 })( jQuery );

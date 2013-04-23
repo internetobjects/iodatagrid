@@ -1,0 +1,56 @@
+<h1>Example 4 - Two Datagrids on the same page</h1>
+<h2>Basic Datagrid 1 - Master</h2>
+<div id="datagrid1" class="datagrid"></div>
+<h2>Basic Datagrid 2 - Detail (Category ID: <span>0</span>)</h2>
+<div id="datagrid2" class="datagrid"></div>
+
+<script type="text/javascript">
+$(document).ready(function(){
+    // datagrid1 init
+    var dg1_options = {
+        url:                'json/datagrid_master.json',
+        colFx:              [center     ,bold       ,details],
+        colTitles:          ['id'       ,'Title'    ,'Details'],
+        colNames:           ['id'       ,'title'    ,'id'],
+        colOrder:           ['asc'      ,'asc'      ,'asc'],
+        colWidths:          ['50px'     ,''         ,'70px'],
+        filterByFields:     [],
+        filterByLabel:      'Title, Id',
+        orderByField:       'title',
+        orderByFieldDir:    'asc'
+    };
+    $('#datagrid1').IODatagrid(dg1_options);
+});
+function showDetails(category_id)
+{
+    // destroy the datagrid first
+    $('#datagrid2').IODatagrid('destroy');
+    // datagrid2 init
+    var dg2_options = {
+        url:                'json/datagrid_details.json',
+        colFx:              [center     ,center         ,bold       ,price      ,link],
+        colTitles:          ['Id'       ,'Category Id'  ,'Title'    ,'Price'    ,'Link'],
+        colNames:           ['id'       ,'category_id'  ,'title'    ,'price'    ,'link'],
+        colOrder:           ['asc'      ,''             ,'asc'      ,'asc'      ,'asc'],
+        colWidths:          ['50px'     ,'80px'         ,''         ,'70px'     ,'50px'],
+        filterByFields:     [],
+        filterByLabel:      'Title, Price, Link, Id',
+        orderByField:       'price',
+        orderByFieldDir:    'asc',
+        data: {
+            filterBy: {
+                category_id: category_id
+            }
+        },
+        triggerAfterLoad:   function(){
+            //$('#datagrid2').find('.dg-filter').val('category_id:'+category_id);
+            $('#datagrid2').prev().find('span').html(category_id);
+        }
+    };
+    $('#datagrid2').IODatagrid(dg2_options);
+}
+
+function details(node) {
+    $(node).html('<a href="javascript:;" onclick="showDetails('+$(node).text()+');">Details</a>');
+}
+</script>

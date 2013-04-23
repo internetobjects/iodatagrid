@@ -1,0 +1,30 @@
+<h1>Example 1 - Basic Datagrid with Header in html</h1>
+<div id="datagrid" class="datagrid">
+    <div class="dg-header row">
+        <div class="dg-search span4">
+            <div class="input-append">
+                <input class="dg-filter span2" type="text" value="" />
+                <button class="dg-submit btn" type="submit">Search</button>
+            </div>
+        </div>
+    </div>
+    <div class="dg-datagrid"></div>
+</div>
+
+<script type="text/javascript">
+$(document).ready(function(){
+    var dg_options = {
+        url:            'json/datagrid1.json',
+        colFx:          [center     ,bold       ,price      ,link],
+        colTitles:      ['id'       ,'Title'    ,'Price'    ,'Link'],
+        colNames:       ['id'       ,'title'    ,'price'    ,'link'],
+        colOrder:       ['asc'      ,'asc'      ,'asc'      ,'asc'],
+        colWidths:      ['50px'     ,''         ,'70px'     ,'50px'],
+        filterByFields: [],
+        filterByLabel:  'Title, Price, Link, Id',
+        orderByField:   'price',
+        orderByFieldDir:'asc'
+    };
+    $('#datagrid').IODatagrid(dg_options);
+});
+</script>
