@@ -2,9 +2,13 @@
     margin-top: 30px;
     margin-bottom: 20px;
 }
-.datagrid .dg-items-per-page select {
-    width: 60px;
-}
 .datagrid .dg-header .dg-pagination {
     margin-top: 0px;
+    margin-bottom: 0px;
+}
+.datagrid .dg-items-per-page {
+    margin-left: 20px;
+}
+.datagrid .dg-items-per-page select {
+    width: 60px;
 }

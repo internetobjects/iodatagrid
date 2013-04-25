@@ -32,33 +32,44 @@
 <body>
 
     <div class="navbar navbar-fixed-top">
-      <div class="navbar-inner">
-        <div class="container">
-          <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-            <span class="icon-bar"></span>
-          </button>
-          <a class="brand" href="">IO Datagrid</a>
-          <div class="nav-collapse collapse">
-            <ul class="nav">
-              <li><a href="">Index</a></li>
-            </ul>
-          </div><!--/.nav-collapse -->
+        <div class="navbar-inner">
+            <div class="container">
+                <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="brand" href="index.html">IO Datagrid</a>
+                <div class="nav-collapse collapse">
+                    <ul class="nav">
+                        <li><a href="index.html">Index</a></li>
+                    </ul>
+                </div><!--/.nav-collapse -->
+            </div>
         </div>
-      </div>
     </div>
 
     <div class="container">
-        <h1>IODatagrid Examples</h1>
-        <p><a href="example1.html">Example 1 - Basic Datagrid with Header in html</a></p>
-        <p><a href="example2.html">Example 2 - Basic Datagrid with dates</a></p>
-        <p><a href="example3.html">Example 3 - Two datagrids on the same page</a></p>
-        <p><a href="example4.html">Example 4 - Master / Detail</a></p>
-        <p><a href="example5.html">Example 5 - Datagrid with dates (1000 entries)</a></p>
-        <p><a href="example6.html">Example 6 - Datagrid with dates (10000 entries)</a></p>
-        <p><a href="example7.html">Example 7 - Datagrid with row returned to cell fx</a></p>
-        <div id="loader"></div>
+        <h1>Datagrid with dates</h1>
+        <div id="datagrid" class="datagrid"></div>
+
+        <script type="text/javascript">
+        $(document).ready(function(){
+            var dg_options = {
+                url:                'json/datagrid2.json',
+                colFx:              [center     ,null           ,bold          ,link        ,date_fr        ,date_fr],
+                colTitles:          ['id'       ,'First Name'   ,'Last Name'    ,'Website'  ,'Birthdate'    ,"Subscribed"],
+                colNames:           ['id'       ,'firstname'    ,'lastname'     ,'website'  ,'birthdate'    ,'subscribed'],
+                colOrder:           [''         ,'asc'          ,'asc'          ,'asc'      ,'desc'         ,'desc'],
+                colWidths:          ['50px'     ,''             ,''             ,'120px'    ,'120px'        ,'120px'],
+                filterByFields:     ['firstname', 'lastname', 'website', 'birthdate', 'subscribed'],
+                orderByField:       'firstname',
+                orderByFieldDir:    'asc',
+                filterByLabelText:  'First Name, Last Name, Website, Birthdate, Subscribed' // as placeholder if less than 22 chars long
+            };
+            $('#datagrid').IODatagrid(dg_options);
+        });
+        </script>
     </div><!-- /container -->
 
     <!-- Le javascript

@@ -2,8 +2,8 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2013-04-23
- * @version 1.5
+ * @date    2013-04-24
+ * @version 1.5.1
  */
 ;(function ($) {
     var debug = false;
@@ -99,6 +99,7 @@
         colNames: [],
         colExtraNames: [],
         colWidths: [],
+        extraFields: [],
         dataType: 'json',
         data: {}, // request data
         allowFilter: true,
@@ -129,7 +130,9 @@
         tableCss: "table table-bordered table-striped",
         paginationCss: "span7 pagination",
         paginationPosition: "header",
-        ippCss: "span1",
+        searchCss: "pull-right",
+        ippCss: "pull-right", //
+        ippPosition: "before .dg-search",
         useLocalStorage: true,
         triggerAfterLoad: null
     };
@@ -149,15 +152,15 @@
     var _buildDatagrid = function(options) {
         if (options.url!="")
         {
-            _loadData(options);
+            _loadData(options, false);
             _buildTable(options);
             _buildTitles(options);
             _attachClickEventToTitles(options);
             _buildHeaderTag(options);
             _buildFooterTag(options);
+            _buildPagination(options);
             _buildFilter(options);
             _buildItemsPerPageSelect(options);
-            _buildPagination(options);
             _buildFoot(options);
         }
     }
@@ -313,9 +316,9 @@
             if ($('.dg-search', options._target).length==0)
             {
                 $('.dg-header', options._target).prepend(
-                    '<div class="dg-search span4">'+
+                    '<div class="dg-search">'+
                         '<div class="input-append">'+
-                            '<input class="dg-filter span2" type="text" value="" placeholder="'+placeHolder+'" />'+
+                            '<input class="dg-filter" type="text" value="" placeholder="'+placeHolder+'" />'+
                             '<button class="dg-submit btn" type="submit">'+options.searchLabelText+'</button>'+
                             '<button class="dg-reload btn btn-primary"><i class="icon-refresh icon-white"></i>'+
                                 (options.reloadLabelText!="" ? " "+options.reloadLabelText : "")+
@@ -326,6 +329,7 @@
                         '</div>'+
                     '</div>'
                 );
+                _setSearchCss(options);
             }
             // search by keyup
             if ($('.dg-submit', options._target).length==0)
@@ -371,7 +375,7 @@
 
     /** Build Footer Tag **/
     var _buildFooterTag = function(options) {
-        if ($('div.dg-footer', options._target).length == 0)
+        if ($('.dg-footer', options._target).length == 0)
         {
             $(options._target).append('<div class="dg-footer"></div>');
         }
@@ -394,10 +398,40 @@
             {
                 ippOptions = '<option value="' + options.ipp + '" selected="selected">-</option>' + ippOptions;
             }
-            $('.dg-header', options._target).append('<div class="dg-items-per-page"><select>' + ippOptions + '</select></div>').change(function(){
-                _setItemsPerPage(options);
-            });
-            _setIppCss(options);
+            var ipp = '<div class="dg-items-per-page"><select>' + ippOptions + '</select></div>';
+            var ippPosition = $.trim(options.ippPosition);
+            var splitIppPos = ippPosition!="" ? ippPosition.split(' ') : ['after', '.dg-search'];
+
+            if ($.inArray(splitIppPos[0], ['before', 'after']) != -1)
+            {
+                var ippSiblingCss = (splitIppPos[1] ? splitIppPos[1] : '.dg-search');
+                var $ippSibling = $(ippSiblingCss, options._target);
+
+                if ($ippSibling.length == 0)
+                {
+                    $('.dg-header', options._target).append(ipp)
+                    .change(function(){
+                        _setItemsPerPage(options);
+                    });
+                }
+                else
+                {
+                    if (splitIppPos[0] == "before")
+                    {
+                        $ippSibling.before(ipp)
+                        .change(function(){
+                            _setItemsPerPage(options);
+                        });
+                    }
+                    else
+                    {
+                        $ippSibling.after(ipp).change(function(){
+                            _setItemsPerPage(options);
+                        });
+                    }
+                }
+                _setIppCss(options);
+            }
         }
     }
 
@@ -407,6 +441,7 @@
         var numRows = 0;
         // table rows holder
         var tableRows = '';
+        var tableRowsData = [];
         // page start / end
         var limitStart = ((options._currentPage - 1) * options.ipp);
         var limitEnd = (options.ipp * options._currentPage);
@@ -424,37 +459,66 @@
             {
                 // table row holder
                 var tableRow = '';
+                // put table row data in an object for later usage in function calls
+                var tableRowData = {};
+                $.each(tblHead, function(tblHeadIndex, tblHeadColName) {
+                    tableRowData[tblHeadColName] = searchObjectRow[tblHeadIndex];
+                });
 
                 // iterate through all column names and display only the requested fields
                 $.each(options.colNames, function(colNameIndex, colName) {
-                    // index of item in json data head
-                    var colNameIndexInHead = $.inArray(colName, tblHead);
+                    // check if the column name is a multi-column
+                    var colNames = colName.split('|');
+                    // row value
+                    var rowValue = '';
+                    // main column name
+                    var mainColName = colName;
 
-                    // if item found in json head
-                    // (colNameIndexInHead can be different than the colNameIndex, if we have for example, [id, title, id])
-                    if (colNameIndexInHead != -1)
+                    // multi column
+                    if (colNames.length > 1)
                     {
-                        var rowValue = '';
-                        // first get value at index of colName, if any
-                        if (searchObjectRow[colNameIndex]!==undefined && colName)
+                        mainColName = colNames[0];
+
+                        for (var otherColNameIndex in colNames)
                         {
-                            rowValue = searchObjectRow[colNameIndex];
+                            var otherColName = colNames[otherColNameIndex];
+                            var otherColNameIndexInHead = $.inArray(otherColName, tblHead);
+                            // the column was found
+                            if (otherColNameIndexInHead != -1)
+                            {
+                                rowValue += searchObjectRow[otherColNameIndexInHead];
+                            }
+                            // not a column, maybe a string
+                            else
+                            {
+                                rowValue += otherColName;
+                            }
                         }
-                        // then, find if there is a value in json data at index of column with the same name in head
-                        else
+                    }
+                    // one column
+                    else
+                    {
+                        // index of item in json data head
+                        var colNameIndexInHead = $.inArray(colName, tblHead);
+
+                        // if item found in json head
+                        // (colNameIndexInHead can be different than the colNameIndex, if we have for example, [id, title, id])
+                        if (colNameIndexInHead != -1)
                         {
+                            // get value by index of column from head
                             rowValue = searchObjectRow[colNameIndexInHead];
                         }
-
-                        // add value to table cell
-                        tableRow += '<td col-name="' + colName + '">' + rowValue + '</td>';
                     }
+
+                    // add value to table cell
+                    tableRow += '<td col-name="' + mainColName + '">' + rowValue + '</td>';
                 });
 
                 // add row to table rows holder
                 if (tableRow != "")
                 {
                     tableRows += '<tr>' + tableRow + '</tr>';
+                    tableRowsData[searchObjectRowIndex] = tableRowData;
                 }
             }
             numRows++;
@@ -465,7 +529,7 @@
         _updatePages(options);
         _buildFootCallbacks(options, tblData);
         _buildTBody(options, tableRows);
-        _updateCellFx(options, searchObject);
+        _updateCellFx(options, tableRowsData);
     }
 
     /** Build table body **/
@@ -477,15 +541,22 @@
     }
 
     /** Update Cells with given Functions **/
-    var _updateCellFx = function(options, searchObject) {
-        if (options.colFx.length > 0)
+    var _updateCellFx = function(options, tableRowsData) {
+        if (options.colFx != undefined || options.colFx.length > 0)
         {
+            // column index
             var colIndex = 1;
+            // Set keys values
+            var tempKeys = (options.data.fields != undefined && options.data.fields.length > 0) ? options.data.fields : options.colNames;
+            var tempKeysLen = tempKeys.length;
+
             $.each(options.colFx, function(index, colFx) {
                 if (typeof(colFx) === 'function')
                 {
                     $.each($('table.dg-display tbody tr > :nth-child(' + colIndex + ')', options._target), function() {
-                        colFx(this, searchObject, colIndex);
+                        var position = $(this).parent().index() + (options.ipp * (options._currentPage-1));
+                        var rowData = tableRowsData[position] ? tableRowsData[position] : {};
+                        colFx(this, rowData, colIndex);
                     });
                 }
                 colIndex++;
@@ -500,18 +571,26 @@
         {
             // filter by fields
             var filterByFields = options.filterByFields;
+            // table head
+            var tblHead = options._rawData.head;
+            // table data
+            var tblData = options._rawData.data;
 
             // Init response json
             options._jsonTempData = [];
 
             // Parse parent json
-            $.each(options._rawData.data, function(rowIndex, rowData){
+            $.each(tblData, function(rowIndex, rowData){
+                // if match found
                 var matchFound = false;
 
                 // iterate through each value from row
                 $.each(this, function(cellIndex, cellData) {
+                    // column name
+                    var colName = (tblHead[cellIndex] ? tblHead[cellIndex] : '');
+
                     // if no filter by fields set or field is in filter by fields array
-                    if (filterByFields.length == 0 || (filterByFields.length != 0 && $.inArray(options.colNames[cellIndex], filterByFields) != -1))
+                    if (filterByFields.length == 0 || (filterByFields.length != 0 && ($.inArray(colName, filterByFields) != -1)))
                     {
                         // if a match was found...
                         if (_matchExpresion(searchStr, cellData))
@@ -541,43 +620,52 @@
     }
 
     /** Load data from the server and place the returned HTML into target **/
-    var _loadData = function(options) {
+    var _loadData = function(options, buildTitles) {
+        // do ajax call
         $.ajax({
             url: options.url,
             dataType: options.dataType,
             data: _requestParams(options),
             type: 'post',
             beforeSend: function(responseData) {
-                $('.dg-loading', options._target).show();
-            },
-            success: function(responseData) {
-                if (options.useLocalStorage && responseData !== false)
-                {
-                    _setLocalStorage(responseData);
-                    options._rawData = JSON.parse(_getLocalStorageValue('jsonData'));
-                }
-                else if (options.useLocalStorage && responseData === false)
-                {
-                    options._rawData = JSON.parse(_getLocalStorageValue('jsonData'));
-                }
-                else
-                {
-                    options._rawData = responseData;
-                }
-                // sort data
-                _sortJson(options);
-                // refresh rows
-                _refreshRows(options);
-                // build titles
-                _buildTitles(options);
-                // hide loading
-                _hideLoading(options);
-                // trigger events
-                _eventDataLoaded(options);
-            },
-            error: function(responseData) {
-                alert(options.errorLoadingData);
+                _showLoading(options);
             }
+        }).done(function(responseData, status, xhr){
+            // check data in local storage
+            if (options.useLocalStorage && responseData !== false)
+            {
+                _setLocalStorage(responseData);
+                options._rawData = JSON.parse(_getLocalStorageValue('jsonData'));
+            }
+            else if (options.useLocalStorage && responseData === false)
+            {
+                options._rawData = JSON.parse(_getLocalStorageValue('jsonData'));
+            }
+            else
+            {
+                options._rawData = responseData;
+            }
+
+            // sort data
+            _sortJson(options);
+            // refresh rows
+            _refreshRows(options);
+            // build titles
+            if (buildTitles===undefined)
+            {
+                _buildTitles(options);
+            }
+            // trigger events
+            _eventDataLoaded(options);
+        }).fail(function(responseData, status, statusText) {
+            var msg = options.errorLoadingData;
+            if (responseData.status=='404')
+            {
+                msg += " Page "+options.url+" not found!";
+            }
+            _showMessages(options, msg);
+        }).always(function(){
+            _hideLoading(options);
         });
     }
 
@@ -739,6 +827,14 @@
         }
     }
 
+    /** Search Component CSS **/
+    var _setSearchCss = function(options) {
+        if (options.searchCss != '')
+        {
+            $('.dg-search', options._target).addClass(options.searchCss);
+        }
+    }
+
     /** Items Per Page Component CSS **/
     var _setIppCss = function(options) {
         if (options.ippCss!='')
@@ -759,24 +855,35 @@
 
     /** Sorting an array in js **/
     var _sortJson = function(options) {
-        // Get order column index
-        var index = options.colNames.indexOf(options.orderByField);
-        // Get order column direction
-        var orderDir = options.orderByFieldDir;
-
-        // Sort search json if any
-        if (options._jsonTempData != null)
+        var sortColNames = options._rawData.head;
+        var orderByField = options.orderByField ? options.orderByField : sortColNames[0];
+        // multi-column
+        var orderByFields = orderByField.split('|');
+        if (orderByFields.length > 1)
         {
-            options._jsonTempData.sort(function(a, b){
-                return _compare(a[index], b[index], orderDir);
-            });
+            orderByField = orderByFields[0];
         }
-        // Sort initial json
-        else
+        // Get order column index
+        var index = $.inArray(orderByField, sortColNames);
+        if (index != -1)
         {
-            options._rawData.data.sort(function(a, b){
-                return _compare(a[index], b[index], orderDir);
-            });
+            // Get order column direction
+            var orderDir = options.orderByFieldDir ? options.orderByFieldDir : 'asc';
+
+            // Sort search json if any
+            if (options._jsonTempData != null)
+            {
+                options._jsonTempData.sort(function(a, b){
+                    return _compare(a[index], b[index], orderDir);
+                });
+            }
+            // Sort initial json
+            else
+            {
+                options._rawData.data.sort(function(a, b){
+                    return _compare(a[index], b[index], orderDir);
+                });
+            }
         }
     }
 
@@ -862,9 +969,46 @@
         }
     }
 
+    /** Show Loading **/
+    var _showLoading = function(options) {
+        $('.dg-loading', options._target).show();
+    }
+
     /** Hide Loading **/
     var _hideLoading = function(options) {
         $('.dg-loading', options._target).hide();
+    }
+
+    /** Show Table **/
+    var _showTable = function(options) {
+        $('.dg-display', options._target).show();
+    }
+
+    /** Hide Table **/
+    var _hideTable = function(options) {
+        $('.dg-display', options._target).hide();
+    }
+
+    /** Show Messages **/
+    var _showMessages = function(options, message) {
+        if ($('.dg-messages', options._target).length == 0)
+        {
+            $('.dg-datagrid', options._target).prepend(
+                '<div class="dg-messages alert alert-error">'+
+                    '<button type="button" class="close" data-dismiss="alert">&times;</button>'+
+                    '<strong>Error!</strong> <span>'+message+'</span>'+
+                '</div>'
+            );
+        }
+        else
+        {
+            $('.dg-messages', options._target).show().find('span').html(message);
+        }
+    }
+
+    /** Hide Messages **/
+    var _hideMessages = function(options) {
+        $('.dg-messages', options._target).remove();
     }
 
     /** Debug Component **/
