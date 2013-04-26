@@ -1,14 +1,3 @@
-.datagrid .dg-header {
-    margin-top: 30px;
-    margin-bottom: 20px;
-}
-.datagrid .dg-header .dg-pagination {
-    margin-top: 0px;
-    margin-bottom: 0px;
-}
-.datagrid .dg-items-per-page {
-    margin-left: 20px;
-}
-.datagrid .dg-items-per-page select {
-    width: 60px;
+body {
+    padding-top: 60px; /* 60px to make the container go all the way to the bottom of the topbar */
 }

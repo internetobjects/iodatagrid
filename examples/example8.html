@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8" />
+    <title>Example 8 | IO Datagrid</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="" />
+    <meta name="author" content="" />
+
+    <link href="css/cupertino/jquery-ui-1.10.2.custom.min.css" rel="stylesheet">
+    <link href="css/bootstrap.min.css" rel="stylesheet" />
+    <link href="css/bootstrap-responsive.min.css" rel="stylesheet" />
+    <link href="../jquery.iodatagrid.css" rel="stylesheet" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="css/custom.css" />
+    <style type="text/css">
+        #datagrid .dg-display {
+            margin-bottom: 0px;
+            border-radius: 0;
+        }
+        .table-bordered thead:first-child tr:first-child th:first-child,
+        .table-bordered tbody:first-child tr:first-child td:first-child {
+            border-radius: 0px;
+        }
+        .datagrid .dg-header {
+            margin-bottom: 0px;
+            margin-top: 30px;
+            border-bottom-left-radius: 0px;
+            border-bottom-right-radius: 0px;
+            padding-bottom: 5px;
+        }
+        .datagrid .dg-header:after {
+            display: table;
+            clear: both;
+            content: "";
+        }
+        .datagrid .dg-header form {
+            margin-bottom: 0;
+        }
+        #datagrid .dg-footer {
+            margin-top: 0px;
+            border-top-left-radius: 0px;
+            border-top-right-radius: 0px;
+        }
+        #datagrid .dg-pagination {
+            margin: 0px;
+        }
+    </style>
+
+    <script src="js/jquery-1.9.1.min.js"></script>
+    <script src="js/jquery-ui-1.10.2.custom.min.js"></script>
+    <script src="js/jquery.ui.datepicker-en-GB.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="../jquery.iodatagrid.js"></script>
+    <script type="text/javascript" src="js/helpers.js"></script>
+    <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
+    <!--[if lt IE 9]>
+      <script src="js/html5shiv.js"></script>
+    <![endif]-->
+
+    <link rel="shortcut icon" href="ico/favicon.ico" />
+
+</head>
+<body>
+
+    <div class="navbar navbar-fixed-top">
+        <div class="navbar-inner">
+            <div class="container">
+                <button type="button" class="btn btn-navbar" data-toggle="collapse" data-target=".nav-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="brand" href="index.html">IO Datagrid</a>
+                <div class="nav-collapse collapse">
+                    <ul class="nav">
+                        <li><a href="index.html">Index</a></li>
+                    </ul>
+                </div><!--/.nav-collapse -->
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h1>Example 8 - Datagrid with more filters</h1>
+        <p>Compact Datagrid with pagination in footer.</p>
+        <p>Filters (input, select and datepickers) in header.</p>
+
+        <form class="span7 form-inline" id="filters" onsubmit="return false;">
+            <label class="control-label" for="selectTag">Tag</label>
+            <select id="selectTag" class="span1">
+                <option value="">-</option>
+                <option value="A">A</option>
+                <option value="B">B</option>
+                <option value="C">C</option>
+            </select>
+            <label class="control-label" for="inputFrom">From</label>
+            <input type="text" id="inputFrom" class="input-small" placeholder="From" value="1980-01-01" />
+            <label class="control-label" for="inputTo">To</label>
+            <input type="text" id="inputTo" class="input-small" placeholder="To" value="2013-12-31" />
+            <label class="control-label" for="inputOther">Other</label>
+            <input type="text" id="inputOther" class="input-small" placeholder="Other filters" value="" />
+            <button type="submit" class="btn" onclick="reload_list();">Search</button>
+        </form>
+        
+        <div id="datagrid" class="datagrid"></div>
+
+        <script type="text/javascript">
+        $(document).ready(function(){
+            $("#inputFrom").datepicker({
+                changeMonth: true,
+                changeYear: true
+            });
+            $("#inputTo").datepicker({
+                changeMonth: true,
+                changeYear: true
+            });
+            
+            var dg_options = {
+                url:                'json/datagrid8.php',
+                colFx:              [center     ,fxtest         ,website    ,null                   ,date_fr        ,date_fr        ,tags],
+                colTitles:          ['id'       ,'Name'         ,'Website'  ,'Phones'               ,'Birthdate'    ,"Subscribed"   ,"Tags"],
+                colNames:           ['id'       ,'firstname'    ,'website'  ,'phone| |cellphone'    ,'birthdate'    ,'subscribed'   ,"tags"],
+                colOrder:           ['asc'      ,'asc'          ,'asc'      ,'asc'                  ,'desc'         ,'desc'         ,"asc"],
+                colWidths:          ['50px'     ,''             ,'120px'    ,'120px'                ,'120px'        ,'120px'        ,"120px"],
+                allowFilter:        false,
+                orderByField:       "firstname",
+                orderByFieldDir:    "asc",
+                headerCss:          "well",
+                paginationCss:      "pagination pagination-right",
+                paginationPosition: "footer",
+                footerCss:          "well",
+                triggerAfterLoad: function(){
+                    $('#datagrid .dg-header').prepend($('#filters'));
+                }
+            };
+            $('#datagrid').IODatagrid(dg_options);
+        });
+
+        // return row data for node's parent
+        function fxtest(node, row)
+        {
+            var colName = $(node).attr('col-name');
+            if (colName == 'firstname')
+            {
+                var title = row.title;
+                var firstname = row.firstname;
+                var lastname = row.lastname;
+                $(node).html(title+' '+firstname+' '+lastname);
+            }
+        }
+        function website(node, row)
+        {
+            var colName = $(node).attr('col-name');
+            if (colName == 'website')
+            {
+                $(node).html('<a href="'+row.website+'" target="_blank">'+row.firstname+' '+row.lastname+'</a>');
+            }
+        }
+        function tags(node, row)
+        {
+            $(node).html(row.tags);
+        }
+        function reload_list()
+        {
+            var data = {
+                    filters: {
+                        start_date: $('#inputFrom').val(),
+                        end_date: $('#inputTo').val(),
+                        tag: $('#selectTag').val(),
+                        other: $('#inputOther').val()
+                    }
+                };
+            $('#datagrid').IODatagrid('option', 'data', data);
+            $('#datagrid').IODatagrid('reload');
+        }
+        </script>
+    </div>
+
+</body>
+</html>

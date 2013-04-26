@@ -2,10 +2,16 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2013-04-24
- * @version 1.5.1
+ * @date    2013-04-26
+ * @version 1.5.2
+ * todo:    - click on title - OK
+ *          - localStorage limit
+ *          - json from variable
+ *          - 50000 rows - disable localStorage
+ *          - multi-column values in one cell - detect strings - OK
  */
 ;(function ($) {
+    var version = '1.5.2';
     var debug = false;
     var regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -13,55 +19,66 @@
 
     /** Plugin Public Methods **/
     var methods = {
-        init : function( options ) {
+        init: function( options ){
             // Create some defaults, extending them with any options that were provided
             var options = $.extend({}, $.fn.IODatagrid.defaults, options);
 
             return this.each(function(){
                 var $this = $(this),
-                    data = $this.data('iodatagrid');
+                    dgData = $this.data('iodatagrid');
 
                 // If the plugin hasn't been initialized yet
-                if ( !data )
+                if ( !dgData )
                 {
                     options._target = $this;
-                    data = {
-                        settings: options
-                    };
-                    $(this).data('iodatagrid', data);
+                    dgData = { options: options };
+                    $this.data('iodatagrid', dgData);
                 }
                 // call datagrid builder
-                if (data && data.settings)
+                if (dgData && dgData.options)
                 {
-                    _buildDatagrid(data.settings);
+                    _buildDatagrid(dgData.options);
                 }
                 else
                 {
-                    alert('Problem with datagrid!');
+                    $.error( 'Cannot build datagrid!' );
                 }
             });
         },
-        destroy : function( ) {
+        destroy: function(){
             return this.each(function(){
-                var $this = $(this);
-                // Namespacing FTW
                 $(window).unbind('.iodatagrid');
-                $this.removeData('iodatagrid');
+                $(this).removeData('iodatagrid');
             });
         },
-        refresh : function() {
+        // reload datagrid
+        reload: function(){
             return this.each(function(){
                 var $this = $(this),
-                    data = $this.data('iodatagrid');
+                    dgData = $this.data('iodatagrid');
 
-                // call datagrid builder
-                if (data && data.settings)
+                if (dgData && dgData.options)
                 {
-                    _loadData(data.settings);
+                    _loadData(dgData.options);
                 }
                 else
                 {
-                    _dbg('Cannot refresh datagrid!');
+                    $.error( 'Cannot reload datagrid!' );
+                }
+            });
+        },
+        // set options
+        option: function(optionIndex, optionValue){
+            return this.each(function(){
+                var $this = $(this),
+                    dgData = $this.data('iodatagrid');
+
+                if (dgData && dgData.options)
+                {
+                    // update options
+                    dgData.options[optionIndex] = optionValue;
+                    $this.data('iodatagrid', dgData);
+
                 }
             });
         }
@@ -82,6 +99,9 @@
             $.error( 'Method ' +  method + ' does not exist on jQuery.IODatagrid' );
         }
     };
+
+    /** Plugin Version **/
+    $.fn.IODatagrid.version = version;
 
     /** Plugin Defaults **/
     $.fn.IODatagrid.defaults = {
@@ -111,10 +131,11 @@
         orderByFieldDir: null,
         searchLabelText: "Search",
         showReloadButton: true,
-        reloadLabelText: "Reload",
+        reloadLabelText: "",
         ipp: 10, // items per page
         ippOptions: [2, 5, 10, 20, 50, 100],
         maxMenuItems: 5, // an odd value
+        showLoadingLabel: true,
         loadingLabelText: "Loading table data... Please wait...",
         itemsLabelText: "Items",
         firstLabelText: "&laquo;",
@@ -125,14 +146,17 @@
         iconOrderUp: "icon-chevron-up",
         iconOrderDown: "icon-chevron-down",
         iconOrderDefault: "icon-th",
-        width: 600,
-        height: 600,
         tableCss: "table table-bordered table-striped",
+        headerCss: "row",
+        colTitlesCss: "pointer",
         paginationCss: "span7 pagination",
         paginationPosition: "header",
         searchCss: "pull-right",
-        ippCss: "pull-right", //
+        filterInputCss: "",
+        ippCss: "pull-right",
+        ippSelectCss: "span1",
         ippPosition: "before .dg-search",
+        footerCss: "",
         useLocalStorage: true,
         triggerAfterLoad: null
     };
@@ -174,7 +198,7 @@
         }
         $('.dg-datagrid', options._target).html(
             '<span class="dg-loading label">' + options.loadingLabelText + '</span>'+
-            '<table class="dg-display" width="' + options.width + '">'+
+            '<table class="dg-display">'+
                 '<thead></thead>'+
                 '<tbody></tbody>'+
                 '<tfoot></tfoot>'+
@@ -186,45 +210,49 @@
     /** Build Titles **/
     var _buildTitles = function(options) {
         var $thead = $('table.dg-display thead', options._target);
-        var col = '',
-            style = '',
-            orderByFieldLink = '';
+
         if (typeof(options.colTitles) === 'object')
         {
+            // remove head row first
             $thead.find('tr').remove();
 
-            $.each(options.colTitles, function(index, val) {
-                // style
-                style = (options.colWidths[index]!=undefined && options.colWidths[index]!="" ? ' style="width:' + options.colWidths[index] + ';"' : '');
-
+            var colTitles = '';
+            $.each(options.colTitles, function(index, headText) {
+                // th style
+                var style = (options.colWidths[index]!=undefined && options.colWidths[index]!="" ? ' style="width:' + options.colWidths[index] + ';"' : '');
+                // col title
+                colTitles += '<th' + style;
                 // order by
-                orderByFieldLink = '';
                 if (options.colOrder[index]!=undefined && options.colOrder[index]!='')
                 {
-                    orderByFieldLink = '<a href="javascript:;" class="pull-right"';
                     if (options.orderByField && options.orderByFieldDir && options.colNames[index]==options.orderByField)
                     {
-                        orderByFieldLink += ' order-by="'+options.colNames[index]+'" order-dir="'+
-                                    (options.orderByFieldDir=='asc' ? 'desc' : 'asc')+'">';
-                        orderByFieldLink += '<i class="' + (options.orderByFieldDir=='asc' ? options.iconOrderUp : options.iconOrderDown) + '"></i>';
+                        colTitles += ' order-by="'+options.colNames[index]+'" order-dir="'+
+                                    (options.orderByFieldDir=='asc' ? 'desc' : 'asc')+'">' + headText;
+                        colTitles += '<i class="pull-right ' + (options.orderByFieldDir=='asc' ? options.iconOrderUp : options.iconOrderDown) + '"></i>';
                     }
                     else
                     {
-                        orderByFieldLink += ' order-by="'+options.colNames[index]+'" order-dir="' + options.colOrder[index]+'">';
-                        orderByFieldLink += '<i class="'+options.iconOrderDefault+'"></i>';
+                        colTitles += ' order-by="'+options.colNames[index]+'" order-dir="' + options.colOrder[index]+'">' + headText;
+                        colTitles += '<i class="pull-right '+options.iconOrderDefault+'"></i>';
                     }
-                    orderByFieldLink += '</a>';
                 }
-                col += '<th' + style + '>' + val + orderByFieldLink + '</th>';
+                // no order
+                else
+                {
+                    colTitles += '>' + headText;
+                }
+                colTitles += '</th>';
             });
 
-            $thead.prepend('<tr>' + col + '</tr>');
+            // create head row
+            $thead.prepend('<tr>' + colTitles + '</tr>').find('th').addClass(options.colTitlesCss);
         }
     }
 
     /** Attach Click Event to Order Links **/
     var _attachClickEventToTitles = function(options) {
-        $('table.dg-display thead', options._target).delegate('a', 'click', function(e){
+        $('table.dg-display thead', options._target).delegate('th', 'click', function(e){
             e.preventDefault();
             // Set new ordering values
             options.orderByField = $(this).attr('order-by');
@@ -274,22 +302,25 @@
     var _buildHeaderTag = function(options) {
         if ($('div.dg-header', options._target).length == 0)
         {
-            $(options._target).prepend('<div class="dg-header row"></div>');
+            $(options._target).prepend('<div class="dg-header"></div>');
+            // set custom css
+            _setHeaderCss(options);
         }
     }
 
     /** Build Pagination **/
     var _buildPagination = function(options) {
+        // pagination markup
+        var paginationUI = '<ul>'+
+                                '<li class="dg-items disabled"><a href="javascript:;">'+options.itemsLabelText+' <span></span></a></li>'+
+                                '<li class="dg-first-last dg-first"><a href="javascript:;">'+options.firstLabelText+'</a></li>'+
+                                '<li class="dg-prev-next dg-prev"><a href="javascript:;">'+options.prevLabelText+'</a></li>'+
+                                '<li class="dg-prev-next dg-next"><a href="javascript:;">'+options.nextLabelText+'</a></li>'+
+                                '<li class="dg-first-last dg-last"><a href="javascript:;">'+options.lastLabelText+'</a></li>'+
+                            '</ul>';
         // if pagination div doesn't exist in header
         if ($('.dg-pagination', options._target).length==0)
         {
-            var paginationUI = '<ul>'+
-                                    '<li class="dg-items disabled"><a href="javascript:;">'+options.itemsLabelText+' <span></span></a></li>'+
-                                    '<li class="dg-first-last dg-first"><a href="javascript:;">'+options.firstLabelText+'</a></li>'+
-                                    '<li class="dg-prev-next dg-prev"><a href="javascript:;">'+options.prevLabelText+'</a></li>'+
-                                    '<li class="dg-prev-next dg-next"><a href="javascript:;">'+options.nextLabelText+'</a></li>'+
-                                    '<li class="dg-first-last dg-last"><a href="javascript:;">'+options.lastLabelText+'</a></li>'+
-                                '</ul>';
             // if position in header
             if (options.paginationPosition=='header')
             {
@@ -302,6 +333,10 @@
             }
             // set extra pagination css if requested
             _setPaginationCss(options);
+        }
+        else
+        {
+            $('.dg-pagination', options._target).html(paginationUI);
         }
     }
 
@@ -319,7 +354,7 @@
                     '<div class="dg-search">'+
                         '<div class="input-append">'+
                             '<input class="dg-filter" type="text" value="" placeholder="'+placeHolder+'" />'+
-                            '<button class="dg-submit btn" type="submit">'+options.searchLabelText+'</button>'+
+                            (options.allowDynamicFilter ? '' : '<button class="dg-submit btn" type="submit">'+options.searchLabelText+'</button>')+
                             '<button class="dg-reload btn btn-primary"><i class="icon-refresh icon-white"></i>'+
                                 (options.reloadLabelText!="" ? " "+options.reloadLabelText : "")+
                             '</button>'+
@@ -331,8 +366,10 @@
                 );
                 _setSearchCss(options);
             }
+            // reset additional filters
+            options.data.filters = {};
             // search by keyup
-            if ($('.dg-submit', options._target).length==0)
+            if ($('.dg-submit', options._target).length==0 || options.allowDynamicFilter)
             {
                 $('.dg-filter', options._target).keyup(function(){
                     _searchAction(options, $(this).val());
@@ -378,27 +415,19 @@
         if ($('.dg-footer', options._target).length == 0)
         {
             $(options._target).append('<div class="dg-footer"></div>');
+            // set custom css
+            _setFooterCss(options);
         }
     }
 
     /** Build Items Per Page Select Box **/
     var _buildItemsPerPageSelect = function(options) {
-        if ($('.dg-items-per-page', options._target).length == 0)
+        // get item
+        var $ipp = $('.dg-items-per-page', options._target);
+
+        if ($ipp.length == 0)
         {
-            var ippOptionSelectedIndex = -1;
-            var ippOptions = '';
-            $.each(options.ippOptions, function(index, val) {
-                if (val==options.ipp)
-                {
-                    ippOptionSelectedIndex = index;
-                }
-                ippOptions += '<option value="' + val + '"' + (val==options.ipp ? ' selected="selected"' : '') + '>'+val+'</option>';
-            });
-            if (ippOptionSelectedIndex==-1)
-            {
-                ippOptions = '<option value="' + options.ipp + '" selected="selected">-</option>' + ippOptions;
-            }
-            var ipp = '<div class="dg-items-per-page"><select>' + ippOptions + '</select></div>';
+            var ipp = '<div class="dg-items-per-page">' + _buildIPPSelectOptions(options) + '</div>';
             var ippPosition = $.trim(options.ippPosition);
             var splitIppPos = ippPosition!="" ? ippPosition.split(' ') : ['after', '.dg-search'];
 
@@ -409,30 +438,51 @@
 
                 if ($ippSibling.length == 0)
                 {
-                    $('.dg-header', options._target).append(ipp)
-                    .change(function(){
-                        _setItemsPerPage(options);
-                    });
+                    $('.dg-header', options._target).append(ipp);
                 }
                 else
                 {
                     if (splitIppPos[0] == "before")
                     {
-                        $ippSibling.before(ipp)
-                        .change(function(){
-                            _setItemsPerPage(options);
-                        });
+                        $ippSibling.before(ipp);
                     }
                     else
                     {
-                        $ippSibling.after(ipp).change(function(){
-                            _setItemsPerPage(options);
-                        });
+                        $ippSibling.after(ipp);
                     }
                 }
-                _setIppCss(options);
             }
+            // get newly created element
+            $ipp = $('.dg-items-per-page', options._target);
+            // set custom css
+            _setIppCss(options);
         }
+        else if ($ipp.html().length==0)
+        {
+            $ipp.html(_buildIPPSelectOptions(options));
+        }
+        // add change event
+        $ipp.change(function(){
+            _setItemsPerPage(options);
+        });
+    }
+
+    /** Build items per page select options **/
+    var _buildIPPSelectOptions = function(options) {
+        var ippOptionSelectedIndex = -1;
+        var ippOptions = '';
+        $.each(options.ippOptions, function(index, val) {
+            if (val==options.ipp)
+            {
+                ippOptionSelectedIndex = index;
+            }
+            ippOptions += '<option value="' + val + '"' + (val==options.ipp ? ' selected="selected"' : '') + '>'+val+'</option>';
+        });
+        if (ippOptionSelectedIndex==-1)
+        {
+            ippOptions = '<option value="' + options.ipp + '" selected="selected">-</option>' + ippOptions;
+        }
+        return '<select'+(options.ippSelectCss ? ' class="'+options.ippSelectCss+'"' : '')+'>' + ippOptions + '</select>';
     }
 
     /** Will refresh datagrid with rows from datasource **/
@@ -491,7 +541,7 @@
                             // not a column, maybe a string
                             else
                             {
-                                rowValue += otherColName;
+                                rowValue += otherColName.replace(/["']/g, '');
                             }
                         }
                     }
@@ -572,12 +622,17 @@
             // filter by fields
             var filterByFields = options.filterByFields;
             // table head
-            var tblHead = options._rawData.head;
+            var tblHead = options._rawData.head ? options._rawData.head : [];
             // table data
-            var tblData = options._rawData.data;
+            var tblData = options._rawData.data ? options._rawData.data : [];
 
             // Init response json
             options._jsonTempData = [];
+
+            if (tblHead.length==0 || tblData.length==0)
+            {
+                return false;
+            }
 
             // Parse parent json
             $.each(tblData, function(rowIndex, rowData){
@@ -629,6 +684,7 @@
             type: 'post',
             beforeSend: function(responseData) {
                 _showLoading(options);
+                _hideMessages(options);
             }
         }).done(function(responseData, status, xhr){
             // check data in local storage
@@ -658,6 +714,7 @@
             // trigger events
             _eventDataLoaded(options);
         }).fail(function(responseData, status, statusText) {
+            console.log(responseData, status, statusText);
             var msg = options.errorLoadingData;
             if (responseData.status=='404')
             {
@@ -819,6 +876,14 @@
         }
     }
 
+    /** Header Component CSS **/
+    var _setHeaderCss = function(options) {
+        if (options.headerCss != '')
+        {
+            $('.dg-header', options._target).addClass(options.headerCss);
+        }
+    }
+
     /** Pagination Component CSS **/
     var _setPaginationCss = function(options) {
         if (options.paginationCss != '')
@@ -832,6 +897,7 @@
         if (options.searchCss != '')
         {
             $('.dg-search', options._target).addClass(options.searchCss);
+            $('.dg-filter', options._target).addClass(options.filterInputCss);
         }
     }
 
@@ -853,10 +919,20 @@
         }
     }
 
+    /** Footer Component CSS **/
+    var _setFooterCss = function(options) {
+        if (options.footerCss!='')
+        {
+            $('.dg-footer', options._target).addClass(options.footerCss);
+        }
+    }
+
     /** Sorting an array in js **/
     var _sortJson = function(options) {
-        var sortColNames = options._rawData.head;
-        var orderByField = options.orderByField ? options.orderByField : sortColNames[0];
+        // get all columns from head
+        var sortColNames = options._rawData.head ? options._rawData.head : [];
+        // set order by field
+        var orderByField = options.orderByField ? options.orderByField : (sortColNames[0] ? sortColNames[0] : '');
         // multi-column
         var orderByFields = orderByField.split('|');
         if (orderByFields.length > 1)
@@ -971,7 +1047,7 @@
 
     /** Show Loading **/
     var _showLoading = function(options) {
-        $('.dg-loading', options._target).show();
+        if (options.showLoadingLabel) $('.dg-loading', options._target).show();
     }
 
     /** Hide Loading **/

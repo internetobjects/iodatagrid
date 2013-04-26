@@ -1,0 +1,15 @@
+.datagrid .dg-header {
+    margin-top: 30px;
+    margin-bottom: 20px;
+}
+.datagrid .dg-header .dg-pagination {
+    margin-top: 0px;
+    margin-bottom: 0px;
+}
+.datagrid .dg-items-per-page {
+    margin-left: 20px;
+}
+.datagrid .dg-display thead tr th,
+.pointer {
+    cursor: pointer;
+}
