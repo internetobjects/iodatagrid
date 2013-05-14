@@ -2,16 +2,14 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2013-04-26
- * @version 1.5.2
- * todo:    - click on title - OK
- *          - localStorage limit
+ * @date    2013-05-14
+ * @version 1.5.3
+ * todo:    - localStorage limit
  *          - json from variable
  *          - 50000 rows - disable localStorage
- *          - multi-column values in one cell - detect strings - OK
  */
 ;(function ($) {
-    var version = '1.5.2';
+    var version = '1.5.3';
     var debug = false;
     var regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -134,7 +132,7 @@
         reloadLabelText: "",
         ipp: 10, // items per page
         ippOptions: [2, 5, 10, 20, 50, 100],
-        maxMenuItems: 5, // an odd value
+        maxVisiblePages: 5, // an odd value
         showLoadingLabel: true,
         loadingLabelText: "Loading table data... Please wait...",
         itemsLabelText: "Items",
@@ -148,7 +146,7 @@
         iconOrderDefault: "icon-th",
         tableCss: "table table-bordered table-striped",
         headerCss: "row",
-        colTitlesCss: "pointer",
+        colTitlesCss: "",
         paginationCss: "span7 pagination",
         paginationPosition: "header",
         searchCss: "pull-right",
@@ -225,6 +223,7 @@
                 // order by
                 if (options.colOrder[index]!=undefined && options.colOrder[index]!='')
                 {
+                    colTitles += ' class="pointer"';
                     if (options.orderByField && options.orderByFieldDir && options.colNames[index]==options.orderByField)
                     {
                         colTitles += ' order-by="'+options.colNames[index]+'" order-dir="'+
@@ -254,15 +253,20 @@
     var _attachClickEventToTitles = function(options) {
         $('table.dg-display thead', options._target).delegate('th', 'click', function(e){
             e.preventDefault();
-            // Set new ordering values
-            options.orderByField = $(this).attr('order-by');
-            options.orderByFieldDir = $(this).attr('order-dir');
-            // Sort json according to order params
-            _sortJson(options);
-            // Refresh table rows after json ordering
-            _refreshRows(options);
-            // Build title with new ordering values
-            _buildTitles(options);
+            var orderBy = $(this).attr('order-by');
+            var orderByDir = $(this).attr('order-dir');
+            if (orderBy && orderByDir)
+            {
+                // Set new ordering values
+                options.orderByField = orderBy;
+                options.orderByFieldDir = orderByDir;
+                // Sort json according to order params
+                _sortJson(options);
+                // Refresh table rows after json ordering
+                _refreshRows(options);
+                // Build title with new ordering values
+                _buildTitles(options);
+            }
             return false;
         });
     }
@@ -404,6 +408,9 @@
             // click on reload button
             $('.dg-reload', options._target).click(function(event){
                 event.preventDefault();
+                // Reset page on reload
+                options._currentPage = 1;
+                // ajax call
                 _loadData(options);
                 return false;
             });
@@ -714,7 +721,6 @@
             // trigger events
             _eventDataLoaded(options);
         }).fail(function(responseData, status, statusText) {
-            console.log(responseData, status, statusText);
             var msg = options.errorLoadingData;
             if (responseData.status=='404')
             {
@@ -754,14 +760,14 @@
         $('.dg-pagination ul li:not(.dg-items)', options._target).removeClass('disabled');
 
         // start, end menu items
-        var maxMenuItems = (options.maxMenuItems%2==0 ? (options.maxMenuItems+1) : options.maxMenuItems);
+        var maxVisiblePages = (options.maxVisiblePages%2==0 ? (options.maxVisiblePages+1) : options.maxVisiblePages);
         var startItemIndex = 1;
         var endItemIndex = numPages;
 
-        if (numPages > maxMenuItems)
+        if (numPages > maxVisiblePages)
         {
             // 4
-            var items = (maxMenuItems - 1);
+            var items = (maxVisiblePages - 1);
             // 2
             var offset = (items / 2);
             // 10
@@ -778,7 +784,7 @@
             // 1 - 2
             else if (currentPage <= offset)
             {
-                endItemIndex = parseInt(currentPage) + parseInt((maxMenuItems - currentPage));
+                endItemIndex = parseInt(currentPage) + parseInt((maxVisiblePages - currentPage));
             }
             // 11 - 12
             else if (currentPage > endOffset)
@@ -975,8 +981,8 @@
         {
             var d1 = parseInt(str1.replace(/-/g, ''), 10);
             var d2 = parseInt(str2.replace(/-/g, ''), 10);
-            if (orderDir == "asc") return (d1 > d2);
-            else return (d1 < d2);
+            if (orderDir == "asc") return (d1 - d2);
+            else return (d2 - d1);
         }
         // compare numbers
         else if (regex_num.test(str1) && regex_num.test(str2))
@@ -997,8 +1003,8 @@
         // compare strings
         else
         {
-            if (orderDir == "asc") return (str1 > str2);
-            else return (str1 < str2);
+            if (orderDir == "asc") return ((str1 > str2) ? 1 : -1);
+            else return ((str1 < str2) ? 1 : -1);
         }
     }
 

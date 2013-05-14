@@ -11,7 +11,7 @@ $data['data'] = array();
 $fn_cnt = count($first_names);
 $ln_cnt = count($last_names);
 $tld_cnt = count($tld);
-for ($i = 1; $i <= 10000; $i++)
+for ($i = 1; $i <= 35; $i++)
 {
     $fn_rand = mt_rand(0, $fn_cnt-1);
     $first_name = $first_names[$fn_rand];
@@ -58,5 +58,5 @@ function rand_date($start=0, $end=0)
         }
     }
     $d_rand = mt_rand(1, $d_rand_end);
-    return $y_rand.'-'.$m_rand.'-'.$d_rand;
+    return sprintf("%04d-%02d-%02d", $y_rand, $m_rand, $d_rand);
 }
