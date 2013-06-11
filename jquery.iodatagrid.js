@@ -2,14 +2,14 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2013-05-14
- * @version 1.5.3
+ * @date    2013-06-11
+ * @version 1.5.4 - Get option value, Use cookies (jquery.cookie.js)
  * todo:    - localStorage limit
  *          - json from variable
  *          - 50000 rows - disable localStorage
  */
 ;(function ($) {
-    var version = '1.5.3';
+    var version = '1.5.4';
     var debug = false;
     var regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -65,20 +65,29 @@
                 }
             });
         },
-        // set options
+        // set/get options
         option: function(optionIndex, optionValue){
-            return this.each(function(){
+            var _optionValue;
+            var $return = this.each(function(){
                 var $this = $(this),
                     dgData = $this.data('iodatagrid');
 
                 if (dgData && dgData.options)
                 {
-                    // update options
-                    dgData.options[optionIndex] = optionValue;
-                    $this.data('iodatagrid', dgData);
-
+                    // update option value
+                    if (optionValue)
+                    {
+                        dgData.options[optionIndex] = optionValue;
+                        $this.data('iodatagrid', dgData);
+                    }
+                    // or return option value
+                    else
+                    {
+                        _optionValue = dgData.options[optionIndex];
+                    }
                 }
             });
+            return _optionValue ? _optionValue : $return;
         }
     };
 
@@ -110,6 +119,7 @@
         _numRows: 0,
         _numPages: 0,
         _currentPage: 1,
+        _triggerAfterLoad: null, // private trigger after load function
         // public properties
         url : "",
         colFx: [],
@@ -156,7 +166,11 @@
         ippPosition: "before .dg-search",
         footerCss: "",
         useLocalStorage: true,
-        triggerAfterLoad: null
+        triggerAfterLoad: null,
+        useCookies: false,
+        cookieName: 'iodatagrid',
+        cookieOptions: {expires: 365},
+        searchStr: ''
     };
 
 
@@ -168,12 +182,17 @@
         {
             options.triggerAfterLoad();
         }
+        if (typeof(options._triggerAfterLoad) === "function")
+        {
+            options._triggerAfterLoad();
+        }
     }
 
     /** Build Datagrid **/
     var _buildDatagrid = function(options) {
         if (options.url!="")
         {
+            _setOptionsFromCookie(options);
             _loadData(options, false);
             _buildTable(options);
             _buildTitles(options);
@@ -357,7 +376,7 @@
                 $('.dg-header', options._target).prepend(
                     '<div class="dg-search">'+
                         '<div class="input-append">'+
-                            '<input class="dg-filter" type="text" value="" placeholder="'+placeHolder+'" />'+
+                            '<input class="dg-filter" type="text" value="'+options.searchStr+'" placeholder="'+placeHolder+'" />'+
                             (options.allowDynamicFilter ? '' : '<button class="dg-submit btn" type="submit">'+options.searchLabelText+'</button>')+
                             '<button class="dg-reload btn btn-primary"><i class="icon-refresh icon-white"></i>'+
                                 (options.reloadLabelText!="" ? " "+options.reloadLabelText : "")+
@@ -587,6 +606,7 @@
         _buildFootCallbacks(options, tblData);
         _buildTBody(options, tableRows);
         _updateCellFx(options, tableRowsData);
+        _updateCookies(options);
     }
 
     /** Build table body **/
@@ -622,7 +642,10 @@
     }
 
     /** Search Action **/
-    var _searchAction = function(options, searchStr) {
+    var _searchAction = function(options, searchStr, fromCookie) {
+        // set search string into options
+        options.searchStr = searchStr;
+
         // Check filter value
         if (searchStr != "")
         {
@@ -674,7 +697,7 @@
             options._jsonTempData = null;
         }
         // Reset page on search
-        options._currentPage = 1;
+        options._currentPage = fromCookie ? options._currentPage : 1;
         // Sort json according to order params
         _sortJson(options);
         // Refresh row with extra param if
@@ -930,6 +953,45 @@
         if (options.footerCss!='')
         {
             $('.dg-footer', options._target).addClass(options.footerCss);
+        }
+    }
+
+    /** Use Cookies **/
+    var _updateCookies = function(options) {
+        if (options.useCookies && $.cookie)
+        {
+            $.cookie.json = true;
+            var cookieValue = {
+                orderByField: options.orderByField,
+                orderByFieldDir: options.orderByFieldDir,
+                searchStr: options.searchStr,
+                ipp: options.ipp,
+                _currentPage: options._currentPage
+            };
+            $.cookie(options.cookieName, cookieValue, options.cookieOptions);
+        }
+    }
+
+    /** Set Options from Cookie **/
+    var _setOptionsFromCookie = function(options) {
+        if (options.useCookies && $.cookie)
+        {
+            $.cookie.json = true;
+            var $cookie = $.cookie(options.cookieName);
+            for (var _key in $cookie)
+            {
+                if (options[_key]!=undefined)
+                {
+                    options[_key] = $cookie[_key];
+                }
+            }
+            // trigger search
+            if (options.searchStr)
+            {
+                options._triggerAfterLoad = function() {
+                    _searchAction(options, options.searchStr, true);
+                }
+            }
         }
     }
 
