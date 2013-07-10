@@ -2,8 +2,8 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2013-06-15
- * @version 1.5.5 - Null values compare
+ * @date    2013-07-10
+ * @version 1.5.6 - Reset current page on reload
  * todo:    - localStorage limit
  *          - json from variable
  *          - 50000 rows - disable localStorage
@@ -57,7 +57,10 @@
 
                 if (dgData && dgData.options)
                 {
-                    _loadData(dgData.options);
+					// reset current page on reload
+					dgData.options._currentPage = 1;
+					// load data with AJAX
+					_loadData(dgData.options);
                 }
                 else
                 {
