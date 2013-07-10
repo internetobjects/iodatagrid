@@ -2,8 +2,8 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2013-06-11
- * @version 1.5.4 - Get option value, Use cookies (jquery.cookie.js)
+ * @date    2013-06-15
+ * @version 1.5.5 - Null values compare
  * todo:    - localStorage limit
  *          - json from variable
  *          - 50000 rows - disable localStorage
@@ -1038,7 +1038,11 @@
      * @param orderDir - Order direction of order column
      */
     var _compare = function(str1, str2, orderDir) {
-        // compare dates
+    	// if null detected
+    	if (str1==null) str1 = "";
+        if (str2==null) str2 = "";
+    	
+    	// compare dates
         if (regex_date.test(str1) && regex_date.test(str2))
         {
             var d1 = parseInt(str1.replace(/-/g, ''), 10);
