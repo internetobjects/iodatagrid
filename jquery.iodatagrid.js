@@ -2,14 +2,11 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2013-07-10
- * @version 1.5.6 - Reset current page on reload
- * todo:    - localStorage limit
- *          - json from variable
- *          - 50000 rows - disable localStorage
+ * @date    2013-08-28
+ * @version 1.5.7 Datagrid with sort on server side
  */
 ;(function ($) {
-    var version = '1.5.4';
+    var version = '1.5.7';
     var debug = false;
     var regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -173,7 +170,8 @@
         useCookies: false,
         cookieName: 'iodatagrid',
         cookieOptions: {expires: 365},
-        searchStr: ''
+        searchStr: '',
+        allowServerSideSort: false
     };
 
 
@@ -237,6 +235,8 @@
             $thead.find('tr').remove();
 
             var colTitles = '';
+            var orderByField = options.orderByField ? options.orderByField : (options.data && options.data.order_by ? options.data.order_by : undefined);
+            var orderByFieldDir = options.orderByFieldDir ? options.orderByFieldDir : (options.data && options.data.order_by_dir ? options.data.order_by : undefined);
             $.each(options.colTitles, function(index, headText) {
                 // th style
                 var style = (options.colWidths[index]!=undefined && options.colWidths[index]!="" ? ' style="width:' + options.colWidths[index] + ';"' : '');
@@ -246,11 +246,11 @@
                 if (options.colOrder[index]!=undefined && options.colOrder[index]!='')
                 {
                     colTitles += ' class="pointer"';
-                    if (options.orderByField && options.orderByFieldDir && options.colNames[index]==options.orderByField)
+                    if (orderByField && orderByFieldDir && options.colNames[index]==orderByField)
                     {
                         colTitles += ' order-by="'+options.colNames[index]+'" order-dir="'+
-                                    (options.orderByFieldDir=='asc' ? 'desc' : 'asc')+'">' + headText;
-                        colTitles += '<i class="pull-right ' + (options.orderByFieldDir=='asc' ? options.iconOrderUp : options.iconOrderDown) + '"></i>';
+                            (orderByFieldDir=='asc' ? 'desc' : 'asc')+'">' + headText;
+                        colTitles += '<i class="pull-right ' + (orderByFieldDir=='asc' ? options.iconOrderUp : options.iconOrderDown) + '"></i>';
                     }
                     else
                     {
@@ -282,12 +282,25 @@
                 // Set new ordering values
                 options.orderByField = orderBy;
                 options.orderByFieldDir = orderByDir;
-                // Sort json according to order params
-                _sortJson(options);
-                // Refresh table rows after json ordering
-                _refreshRows(options);
-                // Build title with new ordering values
-                _buildTitles(options);
+                
+                if (options.allowServerSideSort)
+                {
+                    // send ordering details
+                    options.data.order_by = orderBy;
+                    options.data.order_by_dir = orderByDir;
+                    
+                    // load AJAX
+                    _loadData(options);
+                }
+                else
+                {
+                    // Sort json according to order params
+                    _sortJson(options);
+                    // Refresh table rows after json ordering
+                    _refreshRows(options);
+                    // Build title with new ordering values
+                    _buildTitles(options);
+                }
             }
             return false;
         });
