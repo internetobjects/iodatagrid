@@ -3,10 +3,10 @@
  * @author  Internet Objects
  * @site    http://internet-objects.ro
  * @date    2013-08-28
- * @version 1.5.7 Datagrid with sort on server side
+ * @version 1.5.8 Datagrid make JSON sorting stable in Chrome
  */
 ;(function ($) {
-    var version = '1.5.7';
+    var version = '1.5.8';
     var debug = false;
     var regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -715,7 +715,8 @@
         // Reset page on search
         options._currentPage = fromCookie ? options._currentPage : 1;
         // Sort json according to order params
-        _sortJson(options);
+        // @removed to improve performance - not necessary to resort
+        //_sortJson(options);
         // Refresh row with extra param if
         _refreshRows(options);
     }
@@ -1085,8 +1086,8 @@
         // compare strings
         else
         {
-            if (orderDir == "asc") return ((str1 > str2) ? 1 : -1);
-            else return ((str1 < str2) ? 1 : -1);
+            if (orderDir == "asc") return ((str1 > str2) ? 1 : ((str1 < str2) ? -1 : 0));
+            else return ((str1 < str2) ? 1 : ((str1 > str2) ? -1 : 0));
         }
     }
 
