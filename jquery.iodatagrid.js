@@ -3,7 +3,7 @@
  * @author  Internet Objects
  * @site    http://internet-objects.ro
  * @date    2013-08-28
- * @version 1.5.8 - 1) Datagrid make JSON sorting stable in Chrome  2) if dynamic filter put a small delay on keyup to avoid useless searches -> improve search speed
+ * @version 1.5.9 - trigger dynamic search also when pasting something into the search box
  */
 ;(function ($) {
     var version = '1.5.8';
@@ -410,7 +410,7 @@
             // search by keyup
             if ($('.dg-submit', options._target).length==0 || options.allowDynamicFilter)
             {
-                $('.dg-filter', options._target).keyup(function(){
+                $('.dg-filter', options._target).on("keyup paste", function(){
 					var self = this;
                     // delay the search onkeyup to avoid useless searches
                     setTimeout(function(){
