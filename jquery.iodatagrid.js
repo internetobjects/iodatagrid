@@ -2,11 +2,11 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2013-08-28
- * @version 1.5.10 Load Data directly from JSON. Hide Header if needed.
+ * @date    2014-02-21
+ * @version 1.5.11 Excel Export with Downloadify
  */
 ;(function ($) {
-    var version = '1.5.10';
+    var version = '1.5.11';
     var debug = false;
     var regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -56,6 +56,10 @@
                 {
                     // reset current page on reload
                     dgData.options._currentPage = 1;
+                    // reset JS filter
+                    _searchAction(dgData.options, "");
+                    // reset search string from input
+                    $this.find(".dg-filter").val("");
                     // load data with AJAX
                     _loadData(dgData.options);
                 }
@@ -155,7 +159,7 @@
         iconOrderUp: "icon-chevron-up",
         iconOrderDown: "icon-chevron-down",
         iconOrderDefault: "icon-th",
-        tableCss: "table table-bordered table-striped",
+        tableCss: "table table-bordered table-striped table-hover",
         headerCss: "row",
         colTitlesCss: "",
         paginationCss: "span7 pagination",
@@ -174,7 +178,12 @@
         searchStr: '',
         allowServerSideSort: false,
         dataSourceJSON: false,
-        showHeader: true
+        showHeader: true,
+        showFooter: true,
+        showExcelButton: false,
+        colExcel: [],
+        cssExcel: '',
+        excelPath: ''
     };
 
 
@@ -190,6 +199,7 @@
         {
             options._triggerAfterLoad();
         }
+        if (options.showExcelButton) _buildExcelButton(options);
     }
 
     /** Build Datagrid **/
@@ -327,13 +337,13 @@
     }
 
     /** Build table foot callbacks **/
-    var _buildFootCallbacks = function(options, data) {
+    var _buildFootCallbacks = function(options, data, filteredData) {
         if (options.fxFootCallbacks != undefined) {
             var i = 1;
             $.each(options.fxFootCallbacks, function(index, fxFootCallbacks) {
                 if (typeof(fxFootCallbacks) === 'function')
                 {
-                    fxFootCallbacks(index, data);
+                    fxFootCallbacks(index, data, filteredData, options.colNames);
                 }
                 i++;
             });
@@ -416,6 +426,7 @@
             // search by keyup
             if ($('.dg-submit', options._target).length==0 || options.allowDynamicFilter)
             {
+                // trigger search on keyup and on paste event
                 $('.dg-filter', options._target).on("keyup paste", function(){
                     var self = this;
                     // delay the search onkeyup to avoid useless searches
@@ -523,18 +534,26 @@
     var _buildIPPSelectOptions = function(options) {
         var ippOptionSelectedIndex = -1;
         var ippOptions = '';
-        $.each(options.ippOptions, function(index, val) {
-            if (val==options.ipp)
-            {
-                ippOptionSelectedIndex = index;
-            }
-            ippOptions += '<option value="' + val + '"' + (val==options.ipp ? ' selected="selected"' : '') + '>'+val+'</option>';
-        });
-        if (ippOptionSelectedIndex==-1)
+        
+        if (options.ippOptions.length > 0)
         {
-            ippOptions = '<option value="' + options.ipp + '" selected="selected">-</option>' + ippOptions;
+            $.each(options.ippOptions, function(index, val) {
+                if (val==options.ipp)
+                {
+                    ippOptionSelectedIndex = index;
+                }
+                ippOptions += '<option value="' + val + '"' + (val==options.ipp ? ' selected="selected"' : '') + '>'+val+'</option>';
+            });
+            if (ippOptionSelectedIndex==-1)
+            {
+                ippOptions = '<option value="' + options.ipp + '" selected="selected">-</option>' + ippOptions;
+            }
+            return '<select'+(options.ippSelectCss ? ' class="'+options.ippSelectCss+'"' : '')+'>' + ippOptions + '</select>';
         }
-        return '<select'+(options.ippSelectCss ? ' class="'+options.ippSelectCss+'"' : '')+'>' + ippOptions + '</select>';
+        else
+        {
+            return "";
+        }
     }
 
     /** Will refresh datagrid with rows from datasource **/
@@ -629,16 +648,22 @@
         // update datagrid UI
         _updateNumRows(options, numRows);
         _updatePages(options);
-        _buildFootCallbacks(options, tblData);
-        _buildTBody(options, tableRows);
-        _updateCellFx(options, tableRowsData);
+        _buildFootCallbacks(options, tblData, searchObject);
+        _buildTBody(options, tableRows, tableRowsData);
         _updateCookies(options);
     }
 
     /** Build table body **/
-    var _buildTBody = function(options, tableRows) {
-        // display data
-        $('table.dg-display tbody', options._target).html( tableRows );
+    var _buildTBody = function(options, tableRows, tableRowsData) {
+        // add table rows to table body
+        setTimeout(function() {
+            // display data
+            $('table.dg-display tbody', options._target).html( tableRows );
+        }, 200);
+        // apply function on cell
+        setTimeout(function() {
+            _updateCellFx(options, tableRowsData);
+        }, 200);
     }
 
     /** Update Cells with given Functions **/
@@ -734,8 +759,10 @@
         // load directly from json object
         if (options.dataSourceJSON)
         {
-            _showLoading(options);
-            _hideMessages(options);
+            setTimeout(function(){
+                _showLoading(options);
+                _hideMessages(options);
+            }, 200);
             setTimeout(function(){
                 _loadDataDone(options, buildTitles, options.dataSourceJSON);
                 _hideLoading(options);
@@ -998,7 +1025,11 @@
         {
             options.ipp = $('.dg-items-per-page select', options._target).val();
             options._currentPage = 1;
+            _showLoading(options);
             _refreshRows(options);
+            setTimeout(function(){
+                _hideLoading(options);
+            }, 500 );
         }
     }
 
@@ -1222,6 +1253,91 @@
                 $("body").append('<hr /><div id="dg-debug"><div>');
             }
             $('#dg-debug').prepend('<div class="well">' + info + '</div>');
+        }
+    }
+
+    /** Build Excel Button **/
+    var _buildExcelButton = function(options) {
+        if (typeof(options.colExcel) === 'object')
+        {
+            if ($('.dg-excel', options._target).length==0)
+            {
+                $('<p class="dg-excel '+options.cssExcel+' downloadify">EXPORT</p>').appendTo("#"+options._target.attr("id")+' .dg-footer');
+            }
+
+            _exportToExcel(options);
+        }
+    }
+
+    /** Export to excel **/
+    var _exportToExcel = function(options) {
+        // table head
+        var tblHeadKeys = options._rawData.head;
+
+        var tblData = (options._jsonTempData != null) ? options._jsonTempData : options._rawData.data;
+        var table = '<table><tr>';
+        var colExcelKeys = [];
+
+        // build table head
+        $.each(options.colExcel, function(index, colObj) {
+            // order by
+            var currentIndex = tblHeadKeys.indexOf(colObj.key);
+            // extract only keys
+            colExcelKeys.push(colObj.key);
+            if (index>-1)
+            {
+                table += '<th>'+colObj.val+'</th>';
+            }
+        });
+
+        table += '</tr>';
+        // build table rows
+        $.each(tblData, function(rowIndex, rowData){
+            // iterate through each value from row
+            table += '<tr>';
+
+            $.each(this, function(cellIndex, cellData) {
+                var currentIndex = colExcelKeys.indexOf(tblHeadKeys[cellIndex]);
+                if (currentIndex>-1)
+                {
+                    cellData = ( cellData == null || cellData == 'null' || cellData == '0' ) ? '' : cellData;
+                    table += '<td>'+cellData+'</td>';
+                }
+            });
+            table += '</tr>';
+        });
+        table += '</table>';
+
+        var config = {
+            filename: function(){
+                var d = new Date();
+                var month = d.getMonth()+1;
+                var day = d.getDate();
+                var hour = d.getHours();
+                var minutes = d.getMinutes();
+                var seconds = d.getSeconds();
+
+                var output = d.getFullYear() + '-' +
+                    ((''+month).length<2 ? '0' : '') + month + '-' +
+                    ((''+day).length<2 ? '0' : '') + day + '-' + hour + '-' + minutes + '-' + seconds;;
+
+                return output + "-" + options._target.attr("id") + ".xls";
+            },
+            data: function(){
+                return table;
+            },
+            swf: '../assets/media/downloadify.swf',
+            downloadImage: '../assets/img/download.png',
+            width: 78,
+            height: 30,
+            transparent: true,
+            append: false
+        };
+
+        try {
+            $(".downloadify").downloadify( config );
+        } catch(ex) {
+            alert(ex);
         }
     }
 })( jQuery );
