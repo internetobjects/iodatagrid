@@ -3,10 +3,10 @@
  * @author  Internet Objects
  * @site    http://internet-objects.ro
  * @date    2013-08-28
- * @version 1.5.9 - trigger dynamic search also when pasting something into the search box
+ * @version 1.5.10 Load Data directly from JSON. Hide Header if needed.
  */
 ;(function ($) {
-    var version = '1.5.8';
+    var version = '1.5.10';
     var debug = false;
     var regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -54,10 +54,10 @@
 
                 if (dgData && dgData.options)
                 {
-					// reset current page on reload
-					dgData.options._currentPage = 1;
-					// load data with AJAX
-					_loadData(dgData.options);
+                    // reset current page on reload
+                    dgData.options._currentPage = 1;
+                    // load data with AJAX
+                    _loadData(dgData.options);
                 }
                 else
                 {
@@ -127,6 +127,7 @@
         colNames: [],
         colExtraNames: [],
         colWidths: [],
+        colOrder: [],
         extraFields: [],
         dataType: 'json',
         data: {}, // request data
@@ -171,7 +172,9 @@
         cookieName: 'iodatagrid',
         cookieOptions: {expires: 365},
         searchStr: '',
-        allowServerSideSort: false
+        allowServerSideSort: false,
+        dataSourceJSON: false,
+        showHeader: true
     };
 
 
@@ -191,7 +194,7 @@
 
     /** Build Datagrid **/
     var _buildDatagrid = function(options) {
-        if (options.url!="")
+        if (options.url != "" || options.dataSourceJSON)
         {
             _setOptionsFromCookie(options);
             _loadData(options, false);
@@ -282,13 +285,13 @@
                 // Set new ordering values
                 options.orderByField = orderBy;
                 options.orderByFieldDir = orderByDir;
-                
+
                 if (options.allowServerSideSort)
                 {
                     // send ordering details
                     options.data.order_by = orderBy;
                     options.data.order_by_dir = orderByDir;
-                    
+
                     // load AJAX
                     _loadData(options);
                 }
@@ -339,7 +342,7 @@
 
     /** Build Header Tag **/
     var _buildHeaderTag = function(options) {
-        if ($('div.dg-header', options._target).length == 0)
+        if (options.showHeader && $('div.dg-header', options._target).length == 0)
         {
             $(options._target).prepend('<div class="dg-header"></div>');
             // set custom css
@@ -349,13 +352,16 @@
 
     /** Build Pagination **/
     var _buildPagination = function(options) {
+        // if there's no header
+        if (!options.showHeader) return;
+
         // pagination markup
-        var paginationUI = '<ul>'+
-                                '<li class="dg-items disabled"><a href="javascript:;">'+options.itemsLabelText+' <span></span></a></li>'+
-                                '<li class="dg-first-last dg-first"><a href="javascript:;">'+options.firstLabelText+'</a></li>'+
-                                '<li class="dg-prev-next dg-prev"><a href="javascript:;">'+options.prevLabelText+'</a></li>'+
-                                '<li class="dg-prev-next dg-next"><a href="javascript:;">'+options.nextLabelText+'</a></li>'+
-                                '<li class="dg-first-last dg-last"><a href="javascript:;">'+options.lastLabelText+'</a></li>'+
+        var paginationUI = '<ul>' +
+                              '<li class="dg-items disabled"><a href="javascript:;">'+options.itemsLabelText+' <span></span></a></li>'+
+                              '<li class="dg-first-last dg-first"><a href="javascript:;">'+options.firstLabelText+'</a></li>'+
+                              '<li class="dg-prev-next dg-prev"><a href="javascript:;">'+options.prevLabelText+'</a></li>'+
+                              '<li class="dg-prev-next dg-next"><a href="javascript:;">'+options.nextLabelText+'</a></li>'+
+                              '<li class="dg-first-last dg-last"><a href="javascript:;">'+options.lastLabelText+'</a></li>'+
                             '</ul>';
         // if pagination div doesn't exist in header
         if ($('.dg-pagination', options._target).length==0)
@@ -381,7 +387,7 @@
 
     /** Build Filter **/
     var _buildFilter = function(options) {
-        if (options.allowFilter)
+        if (options.showHeader && options.allowFilter)
         {
             var placeHolder = options.filterByLabelText.length>options.filterByLabelTextLength ? '' : options.filterByLabelText;
             var filterByLabelText = options.filterByLabelText.length>options.filterByLabelTextLength ? options.filterByLabelText : '';
@@ -411,11 +417,11 @@
             if ($('.dg-submit', options._target).length==0 || options.allowDynamicFilter)
             {
                 $('.dg-filter', options._target).on("keyup paste", function(){
-					var self = this;
+                    var self = this;
                     // delay the search onkeyup to avoid useless searches
                     setTimeout(function(){
-						  _searchAction(options, $(self).val());
-						}, 700 );
+                          _searchAction(options, $(self).val());
+                        }, 700 );
                 });
             }
             // or by button click
@@ -458,7 +464,7 @@
 
     /** Build Footer Tag **/
     var _buildFooterTag = function(options) {
-        if ($('.dg-footer', options._target).length == 0)
+        if (options.showFooter && $('.dg-footer', options._target).length == 0)
         {
             $(options._target).append('<div class="dg-footer"></div>');
             // set custom css
@@ -631,8 +637,6 @@
 
     /** Build table body **/
     var _buildTBody = function(options, tableRows) {
-        // always empty tbody before populate
-        $('table.dg-display tbody', options._target).html('');
         // display data
         $('table.dg-display tbody', options._target).html( tableRows );
     }
@@ -727,17 +731,46 @@
 
     /** Load data from the server and place the returned HTML into target **/
     var _loadData = function(options, buildTitles) {
+        // load directly from json object
+        if (options.dataSourceJSON)
+        {
+            _showLoading(options);
+            _hideMessages(options);
+            setTimeout(function(){
+                _loadDataDone(options, buildTitles, options.dataSourceJSON);
+                _hideLoading(options);
+            }, 500);
+        }
         // do ajax call
-        $.ajax({
-            url: options.url,
-            dataType: options.dataType,
-            data: _requestParams(options),
-            type: 'post',
-            beforeSend: function(responseData) {
-                _showLoading(options);
-                _hideMessages(options);
-            }
-        }).done(function(responseData, status, xhr){
+        else
+        {
+            $.ajax({
+                url: options.url,
+                dataType: options.dataType,
+                data: _requestParams(options),
+                type: 'post',
+                beforeSend: function(responseData) {
+                    _showLoading(options);
+                    _hideMessages(options);
+                }
+            }).done(function(responseData, status, xhr){
+                _loadDataDone(options, buildTitles, responseData);
+            }).fail(function(responseData, status, statusText) {
+                _loadDataFail(options, responseData);
+            }).always(function(){
+                _hideLoading(options);
+            });
+        }
+    }
+
+    var _loadDataDone = function(options, buildTitles, responseData) {
+
+        if (options.dataSourceJSON)
+        {
+            options._rawData = responseData;
+        }
+        else
+        {
             // check data in local storage
             if (options.useLocalStorage && responseData !== false)
             {
@@ -752,28 +785,28 @@
             {
                 options._rawData = responseData;
             }
+        }
 
-            // sort data
-            _sortJson(options);
-            // refresh rows
-            _refreshRows(options);
-            // build titles
-            if (buildTitles===undefined)
-            {
-                _buildTitles(options);
-            }
-            // trigger events
-            _eventDataLoaded(options);
-        }).fail(function(responseData, status, statusText) {
-            var msg = options.errorLoadingData;
-            if (responseData.status=='404')
-            {
-                msg += " Page "+options.url+" not found!";
-            }
-            _showMessages(options, msg);
-        }).always(function(){
-            _hideLoading(options);
-        });
+        // sort data
+        _sortJson(options);
+        // refresh rows
+        _refreshRows(options);
+        // build titles
+        if (buildTitles===undefined)
+        {
+            _buildTitles(options);
+        }
+        // trigger events
+        _eventDataLoaded(options);
+    }
+
+    var _loadDataFail = function(options, responseData) {
+        var msg = options.errorLoadingData;
+        if (responseData.status=='404')
+        {
+            msg += " Page "+options.url+" not found!";
+        }
+        _showMessages(options, msg);
     }
 
     /** Update HTML with num rows after refresh **/
@@ -1059,11 +1092,11 @@
      * @param orderDir - Order direction of order column
      */
     var _compare = function(str1, str2, orderDir) {
-    	// if null detected
-    	if (str1==null) str1 = "";
+        // if null detected
+        if (str1==null) str1 = "";
         if (str2==null) str2 = "";
-    	
-    	// compare dates
+
+        // compare dates
         if (regex_date.test(str1) && regex_date.test(str2))
         {
             var d1 = parseInt(str1.replace(/-/g, ''), 10);
@@ -1090,8 +1123,8 @@
         // compare strings
         else
         {
-            if (orderDir == "asc") return ((str1 > str2) ? 1 : ((str1 < str2) ? -1 : 0));
-            else return ((str1 < str2) ? 1 : ((str1 > str2) ? -1 : 0));
+            if (orderDir == "asc") return ((str1.toLowerCase() > str2.toLowerCase()) ? 1 : ((str1.toLowerCase() < str2.toLowerCase()) ? -1 : 0));
+            else return ((str1.toLowerCase() < str2.toLowerCase()) ? 1 : ((str1.toLowerCase() > str2.toLowerCase()) ? -1 : 0));
         }
     }
 

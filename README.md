@@ -5,8 +5,8 @@
 * Simple to configure jQuery Datagrid Plugin
 * Uses condensed json data format to improve download time from server
 * Allows server side and local on fly data filters
-* Uses standard default Boostrap css but remains 100% configurable
-* Is capable of using browser storage to cache json data 
+* Uses standard default Bootstrap css but remains 100% configurable
+* Is capable of using browser storage to cache json data
 
 
 ## Example code
