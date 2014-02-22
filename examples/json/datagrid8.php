@@ -45,6 +45,8 @@ if ($start_date!="" || $end_date!="" || $tag!="" || $other!="")
                 }
             }
         }
+
+        $_temp = array();
         foreach ($found as $values)
         {
             if (
@@ -53,7 +55,12 @@ if ($start_date!="" || $end_date!="" || $tag!="" || $other!="")
                 (isset($found['date']))
             )
             {
-                $temp->data[] = $values;
+                $_id = $values[0];
+                if (!isset($_temp[$_id]))
+                {
+                    $_temp[$_id] = $values;
+                    $temp->data[] = $values;
+                }
             }
         }
     }
@@ -67,7 +74,7 @@ function req($key, $def='')
 }
 function val4key($arr, $key, $def='')
 {
-    return isset($arr[$key]) ? $arr[$key] : '';
+    return isset($arr[$key]) ? $arr[$key] : $def;
 }
 function echopre($arr)
 {

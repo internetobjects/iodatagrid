@@ -15,7 +15,8 @@
     <link rel="stylesheet" type="text/css" href="css/custom.css" />
     <style type="text/css">
         #datagrid .dg-datagrid {
-            margin-top: 40px;
+            margin-top: 0px;
+            position: relative;
         }
         #datagrid .dg-display {
             margin-bottom: 0px;
@@ -45,12 +46,6 @@
             border-top-left-radius: 0px;
             border-top-right-radius: 0px;
         }
-        #datagrid .dg-pagination {
-            margin: 0px;
-        }
-        #datagrid .dg-datagrid {
-            position: relative;
-        }
         #datagrid .dg-loading {
             position: absolute;
             left: 0;
@@ -63,6 +58,8 @@
     <script src="js/jquery.ui.datepicker-en-GB.js"></script>
     <script src="js/bootstrap.js"></script>
     <script src="../jquery.iodatagrid.js"></script>
+    <script src="js/downloadify.js"></script>
+    <script src="js/swfobject.js"></script>
     <script src="js/helpers.js"></script>
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
@@ -106,7 +103,7 @@
                 [3, 'User3 Name', 'user3@email.com', '0264012347']
             ]
         };
-        
+
         $(document).ready(function(){
             var dg_options = {
                 colFx:              [center     ,null       ,null       ,null],
@@ -115,10 +112,14 @@
                 colOrder:           ['asc'      ,'asc'      ,'asc'      ,'asc'],
                 colWidths:          ['50px'     ,''         ,'120px'    ,'120px'],
                 dataSourceJSON:     dataSource,
+                colExcel:           ['id', 'name', 'email','phone'],
                 orderByField:       "name",
                 orderByFieldDir:    "asc",
-                showHeader:         false,
-                showExcelButton:    false
+                allowDynamicFilter: true,
+                showHeader:         true,
+                showExcelButton:    true,
+                headerCss:          "well well-small",
+                footerCss:          "well well-small"
             };
             $('#datagrid').IODatagrid(dg_options);
         });

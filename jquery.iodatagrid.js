@@ -2,13 +2,13 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2014-02-21
- * @version 1.5.11 Excel Export with Downloadify
+ * @date    2014-02-22
+ * @version 1.5.12 Use deferred instead of setTimeout. Clear timeout for onkeyup search.
  */
-;(function ($) {
-    var version = '1.5.11';
-    var debug = false;
-    var regex_num = new RegExp('^[0-9]+$'),
+(function ($) {
+    var version = '1.5.12',
+        debug = false,
+        regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
         regex_date = new RegExp('^[0-9]{4}-[0-9]{1,2}-[0-9]{1,2}$');
 
@@ -160,9 +160,9 @@
         iconOrderDown: "icon-chevron-down",
         iconOrderDefault: "icon-th",
         tableCss: "table table-bordered table-striped table-hover",
-        headerCss: "row",
+        headerCss: "",
         colTitlesCss: "",
-        paginationCss: "span7 pagination",
+        paginationCss: "pagination",
         paginationPosition: "header",
         searchCss: "pull-right",
         filterInputCss: "",
@@ -426,13 +426,15 @@
             // search by keyup
             if ($('.dg-submit', options._target).length==0 || options.allowDynamicFilter)
             {
+                var timeoutHandle;
                 // trigger search on keyup and on paste event
-                $('.dg-filter', options._target).on("keyup paste", function(){
+                $('.dg-filter', options._target).on("keyup paste", function () {
                     var self = this;
+                    clearTimeout(timeoutHandle);
                     // delay the search onkeyup to avoid useless searches
-                    setTimeout(function(){
-                          _searchAction(options, $(self).val());
-                        }, 700 );
+                    timeoutHandle = setTimeout(function () {
+                        _searchAction(options, $(self).val());
+                    }, 700);
                 });
             }
             // or by button click
@@ -534,7 +536,7 @@
     var _buildIPPSelectOptions = function(options) {
         var ippOptionSelectedIndex = -1;
         var ippOptions = '';
-        
+
         if (options.ippOptions.length > 0)
         {
             $.each(options.ippOptions, function(index, val) {
@@ -655,15 +657,14 @@
 
     /** Build table body **/
     var _buildTBody = function(options, tableRows, tableRowsData) {
-        // add table rows to table body
-        setTimeout(function() {
-            // display data
-            $('table.dg-display tbody', options._target).html( tableRows );
-        }, 200);
-        // apply function on cell
-        setTimeout(function() {
+        var dfd = $.Deferred();
+        // Add handlers to be called when dfd is resolved
+        dfd.done(function () {
+            $('table.dg-display tbody', options._target).html(tableRows);
+        }, function () {
             _updateCellFx(options, tableRowsData);
-        }, 200);
+        });
+        dfd.resolve();
     }
 
     /** Update Cells with given Functions **/
@@ -1260,9 +1261,9 @@
     var _buildExcelButton = function(options) {
         if (typeof(options.colExcel) === 'object')
         {
-            if ($('.dg-excel', options._target).length==0)
+            if ($('.dg-excel', options._target).length == 0)
             {
-                $('<p class="dg-excel '+options.cssExcel+' downloadify">EXPORT</p>').appendTo("#"+options._target.attr("id")+' .dg-footer');
+                $('<div class="dg-excel ' + options.cssExcel + ' downloadify">EXPORT</div>').appendTo("#"+options._target.attr("id")+' .dg-footer');
             }
 
             _exportToExcel(options);
@@ -1309,35 +1310,34 @@
         table += '</table>';
 
         var config = {
-            filename: function(){
-                var d = new Date();
-                var month = d.getMonth()+1;
-                var day = d.getDate();
-                var hour = d.getHours();
-                var minutes = d.getMinutes();
-                var seconds = d.getSeconds();
-
-                var output = d.getFullYear() + '-' +
-                    ((''+month).length<2 ? '0' : '') + month + '-' +
-                    ((''+day).length<2 ? '0' : '') + day + '-' + hour + '-' + minutes + '-' + seconds;;
+            filename: function() {
+                var d = new Date(),
+                    month = d.getMonth()+1,
+                    day = d.getDate(),
+                    hour = d.getHours(),
+                    minutes = d.getMinutes(),
+                    seconds = d.getSeconds(),
+                    output = d.getFullYear() + '-' +
+                                ((''+month).length<2 ? '0' : '') + month + '-' +
+                                ((''+day).length<2 ? '0' : '') + day + '-' + hour + '-' + minutes + '-' + seconds;
 
                 return output + "-" + options._target.attr("id") + ".xls";
             },
-            data: function(){
+            data: function () {
                 return table;
             },
             swf: '../assets/media/downloadify.swf',
             downloadImage: '../assets/img/download.png',
-            width: 78,
+            width: 100,
             height: 30,
             transparent: true,
             append: false
         };
 
         try {
-            $(".downloadify").downloadify( config );
-        } catch(ex) {
+            $(".downloadify").downloadify(config);
+        } catch (ex) {
             alert(ex);
         }
     }
-})( jQuery );
+})(jQuery);
