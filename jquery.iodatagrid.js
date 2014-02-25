@@ -2,11 +2,11 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2014-02-22
- * @version 1.5.12 Use deferred instead of setTimeout. Clear timeout for onkeyup search.
+ * @date    2014-02-25
+ * @version 1.5.13 Display a message if there are no records found
  */
 (function ($) {
-    var version = '1.5.12',
+    var version = '1.5.13',
         debug = false,
         regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -183,7 +183,10 @@
         showExcelButton: false,
         colExcel: [],
         cssExcel: '',
-        excelPath: ''
+        excelPath: '',
+        displayTableIfEmpty: true,
+        emptyMessageText: "No items in list!",
+        emptyMessageCss: ""
     };
 
 
@@ -199,13 +202,13 @@
         {
             options._triggerAfterLoad();
         }
-        if (options.showExcelButton) _buildExcelButton(options);
     }
 
     /** Build Datagrid **/
     var _buildDatagrid = function(options) {
         if (options.url != "" || options.dataSourceJSON)
         {
+            _buildEmptyMessage(options);
             _setOptionsFromCookie(options);
             _loadData(options, false);
             _buildTable(options);
@@ -648,11 +651,42 @@
         });
 
         // update datagrid UI
-        _updateNumRows(options, numRows);
-        _updatePages(options);
-        _buildFootCallbacks(options, tblData, searchObject);
-        _buildTBody(options, tableRows, tableRowsData);
-        _updateCookies(options);
+        if (numRows > 0 || options.displayTableIfEmpty)
+        {
+            $('.dg-empty', options._target).hide();
+            $('table.dg-display', options._target).show();
+
+            _updateNumRows(options, numRows);
+            _updatePages(options);
+            _buildFootCallbacks(options, tblData, searchObject);
+            _buildTBody(options, tableRows, tableRowsData);
+            _updateCookies(options);
+            
+            // show download excel button
+            if (options.showExcelButton)
+            {
+                options._triggerAfterLoad = function() {
+                    _buildExcelButton(options);
+                }
+            }
+        }
+        else
+        {
+            $('.dg-empty', options._target).show();
+            $('table.dg-display', options._target).hide();
+            
+            options._triggerAfterLoad = null;
+        }
+    }
+    
+    /** Build empty message **/
+    var _buildEmptyMessage = function(options) {
+        if ($('.dg-empty', options._target).length == 0)
+        {
+            $(options._target).append('<div class="dg-empty">' + options.emptyMessageText + '</div>');
+            // set custom css
+            _setEmptyMessageCss(options);
+        }
     }
 
     /** Build table body **/
@@ -1031,6 +1065,14 @@
             setTimeout(function(){
                 _hideLoading(options);
             }, 500 );
+        }
+    }
+    
+    /** Empty Message CSS **/
+    var _setEmptyMessageCss = function(options) {
+        if (options.emptyMessageCss != '')
+        {
+            $('.dg-empty', options._target).addClass(options.emptyMessageCss);
         }
     }
 
