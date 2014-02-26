@@ -2,11 +2,11 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2014-02-25
- * @version 1.5.13 Display a message if there are no records found
+ * @date    2014-02-26
+ * @version 1.5.14 Return row index as colFx param
  */
 (function ($) {
-    var version = '1.5.13',
+    var version = '1.5.14',
         debug = false,
         regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -707,6 +707,7 @@
         {
             // column index
             var colIndex = 1;
+            var rowIndex = -1;
             // Set keys values
             var tempKeys = (options.data.fields != undefined && options.data.fields.length > 0) ? options.data.fields : options.colNames;
             var tempKeysLen = tempKeys.length;
@@ -715,9 +716,9 @@
                 if (typeof(colFx) === 'function')
                 {
                     $.each($('table.dg-display tbody tr > :nth-child(' + colIndex + ')', options._target), function() {
-                        var position = $(this).parent().index() + (options.ipp * (options._currentPage-1));
-                        var rowData = tableRowsData[position] ? tableRowsData[position] : {};
-                        colFx(this, rowData, colIndex);
+                        var rowIndex = $(this).parent().index() + (options.ipp * (options._currentPage-1));
+                        var rowData = tableRowsData[rowIndex] ? tableRowsData[rowIndex] : {};
+                        colFx(this, rowData, colIndex, rowIndex);
                     });
                 }
                 colIndex++;
