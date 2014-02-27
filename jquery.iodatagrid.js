@@ -3,10 +3,10 @@
  * @author  Internet Objects
  * @site    http://internet-objects.ro
  * @date    2014-02-26
- * @version 1.5.15 Default Sorting Disabled (orderByField:'none')
+ * @version 1.5.16 Sort floats with any number of decimals
  */
 (function ($) {
-    var version = '1.5.15',
+    var version = '1.5.16',
         debug = false,
         regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -1193,8 +1193,10 @@
         // compare float numbers
         else if (regex_float.test(str1) && regex_float.test(str2))
         {
-            var n1 = parseInt(str1*100, 10);
-            var n2 = parseInt(str2*100, 10);
+            var prec1 = _getFloatPrecision(str1);
+            var prec2 = _getFloatPrecision(str2);
+            var n1 = parseInt(str1 * Math.pow(10, prec1), 10);
+            var n2 = parseInt(str2 * Math.pow(10, prec2), 10);
             if (orderDir == "asc") return (n1 - n2);
             else return (n2 - n1);
         }
@@ -1204,6 +1206,17 @@
             if (orderDir == "asc") return ((str1.toLowerCase() > str2.toLowerCase()) ? 1 : ((str1.toLowerCase() < str2.toLowerCase()) ? -1 : 0));
             else return ((str1.toLowerCase() < str2.toLowerCase()) ? 1 : ((str1.toLowerCase() > str2.toLowerCase()) ? -1 : 0));
         }
+    }
+
+    /** Get Float Precision **/
+    var _getFloatPrecision = function(str) {
+        var prec = 2,
+            prec1 = (str + "").split(".");
+        if (prec1.length==2)
+        {
+            prec = prec1[1].length;
+        }
+        return prec;
     }
 
     /** Escape Regex Expression **/
