@@ -3,10 +3,10 @@
  * @author  Internet Objects
  * @site    http://internet-objects.ro
  * @date    2014-02-26
- * @version 1.5.14 Return row index as colFx param
+ * @version 1.5.15 Default Sorting Disabled (orderByField:'none')
  */
 (function ($) {
-    var version = '1.5.14',
+    var version = '1.5.15',
         debug = false,
         regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -36,7 +36,7 @@
                 }
                 else
                 {
-                    $.error( 'Cannot build datagrid!' );
+                    $.error('Cannot build datagrid!');
                 }
             });
         },
@@ -60,12 +60,12 @@
                     _searchAction(dgData.options, "");
                     // reset search string from input
                     $this.find(".dg-filter").val("");
-                    // load data with AJAX
+                    // load data
                     _loadData(dgData.options);
                 }
                 else
                 {
-                    $.error( 'Cannot reload datagrid!' );
+                    $.error('Cannot reload datagrid!');
                 }
             });
         },
@@ -107,7 +107,7 @@
         }
         else
         {
-            $.error( 'Method ' +  method + ' does not exist on jQuery.IODatagrid' );
+            $.error('Method ' + method + ' does not exist on jQuery.IODatagrid');
         }
     };
 
@@ -437,7 +437,7 @@
                     // delay the search onkeyup to avoid useless searches
                     timeoutHandle = setTimeout(function () {
                         _searchAction(options, $(self).val());
-                    }, 700);
+                    }, 500);
                 });
             }
             // or by button click
@@ -1126,10 +1126,13 @@
 
     /** Sorting an array in js **/
     var _sortJson = function(options) {
+        // no sort
+        if (options.orderByField=='none') return;
+        
         // get all columns from head
         var sortColNames = options._rawData.head ? options._rawData.head : [];
         // set order by field
-        var orderByField = options.orderByField ? options.orderByField : (sortColNames[0] ? sortColNames[0] : '');
+        var orderByField = (options.orderByField ? options.orderByField : (sortColNames[0] ? sortColNames[0] : ''));
         // multi-column
         var orderByFields = orderByField.split('|');
         if (orderByFields.length > 1)
