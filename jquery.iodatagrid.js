@@ -2,11 +2,11 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2014-02-26
- * @version 1.5.16 Sort floats with any number of decimals
+ * @date    2014-03-04
+ * @version 1.5.17 Table head texts in span (Elena S.)
  */
 (function ($) {
-    var version = '1.5.16',
+    var version = '1.5.17',
         debug = false,
         regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -265,12 +265,12 @@
                     if (orderByField && orderByFieldDir && options.colNames[index]==orderByField)
                     {
                         colTitles += ' order-by="'+options.colNames[index]+'" order-dir="'+
-                            (orderByFieldDir=='asc' ? 'desc' : 'asc')+'">' + headText;
+                            (orderByFieldDir=='asc' ? 'desc' : 'asc')+'">' + '<span class="dg-th-text">' + headText + '</span>';
                         colTitles += '<i class="pull-right ' + (orderByFieldDir=='asc' ? options.iconOrderUp : options.iconOrderDown) + '"></i>';
                     }
                     else
                     {
-                        colTitles += ' order-by="'+options.colNames[index]+'" order-dir="' + options.colOrder[index]+'">' + headText;
+                        colTitles += ' order-by="'+options.colNames[index]+'" order-dir="' + options.colOrder[index]+'">' + '<span class="dg-th-text">' + headText + '</span>';
                         colTitles += '<i class="pull-right '+options.iconOrderDefault+'"></i>';
                     }
                 }
