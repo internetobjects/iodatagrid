@@ -2,11 +2,11 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2014-03-04
- * @version 1.5.17 Table head texts in span (Elena S.)
+ * @date    2014-03-06
+ * @version 1.5.18 Fix for sorting Booleans
  */
 (function ($) {
-    var version = '1.5.17',
+    var version = '1.5.18',
         debug = false,
         regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -1203,8 +1203,10 @@
         // compare strings
         else
         {
-            if (orderDir == "asc") return ((str1.toLowerCase() > str2.toLowerCase()) ? 1 : ((str1.toLowerCase() < str2.toLowerCase()) ? -1 : 0));
-            else return ((str1.toLowerCase() < str2.toLowerCase()) ? 1 : ((str1.toLowerCase() > str2.toLowerCase()) ? -1 : 0));
+            str1 = (typeof str1 == "string" ? str1.toLowerCase() : str1);
+            str2 = (typeof str2 == "string" ? str2.toLowerCase() : str2);
+            if (orderDir == "asc") return ((str1 > str2) ? 1 : ((str1 < str2) ? -1 : 0));
+            else return ((str1 < str2) ? 1 : ((str1 > str2) ? -1 : 0));
         }
     }
 
