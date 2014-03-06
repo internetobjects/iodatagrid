@@ -3,10 +3,10 @@
  * @author  Internet Objects
  * @site    http://internet-objects.ro
  * @date    2014-03-06
- * @version 1.5.18 Fix for sorting Booleans
+ * @version 1.5.19 Reset Search Public Method (Elena S.)
  */
 (function ($) {
-    var version = '1.5.18',
+    var version = '1.5.19',
         debug = false,
         regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -92,6 +92,11 @@
                 }
             });
             return _optionValue ? _optionValue : $return;
+        },
+        resetSearch: function() {
+             var $this = $(this),
+                 dgData = $this.data('iodatagrid');
+            _searchAction(dgData.options, '');
         }
     };
 
