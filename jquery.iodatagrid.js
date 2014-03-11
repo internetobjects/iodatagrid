@@ -2,11 +2,11 @@
  * jQuery IO Datagrid Plugin
  * @author  Internet Objects
  * @site    http://internet-objects.ro
- * @date    2014-03-06
- * @version 1.5.19 Reset Search Public Method (Elena S.)
+ * @date    2014-03-07
+ * @version 1.5.20 Do not show error message if AJAX aborted
  */
 (function ($) {
-    var version = '1.5.19',
+    var version = '1.5.20',
         debug = false,
         regex_num = new RegExp('^[0-9]+$'),
         regex_float = new RegExp('^[0-9\.]+$'),
@@ -191,7 +191,7 @@
         excelPath: '',
         displayTableIfEmpty: true,
         emptyMessageText: "No items in list!",
-        emptyMessageCss: ""
+        emptyMessageCss: "hide"
     };
 
 
@@ -679,11 +679,11 @@
         {
             $('.dg-empty', options._target).show();
             $('table.dg-display', options._target).hide();
-            
+
             options._triggerAfterLoad = null;
         }
     }
-    
+
     /** Build empty message **/
     var _buildEmptyMessage = function(options) {
         if ($('.dg-empty', options._target).length == 0)
@@ -801,12 +801,12 @@
         if (options.dataSourceJSON)
         {
             setTimeout(function(){
-                _showLoading(options);
                 _hideMessages(options);
+                _showLoading(options);
             }, 200);
             setTimeout(function(){
-                _loadDataDone(options, buildTitles, options.dataSourceJSON);
                 _hideLoading(options);
+                _loadDataDone(options, buildTitles, options.dataSourceJSON);
             }, 500);
         }
         // do ajax call
@@ -818,8 +818,8 @@
                 data: _requestParams(options),
                 type: 'post',
                 beforeSend: function(responseData) {
-                    _showLoading(options);
                     _hideMessages(options);
+                    _showLoading(options);
                 }
             }).done(function(responseData, status, xhr){
                 _loadDataDone(options, buildTitles, responseData);
@@ -869,12 +869,14 @@
     }
 
     var _loadDataFail = function(options, responseData) {
-        var msg = options.errorLoadingData;
-        if (responseData.status=='404')
-        {
-            msg += " Page "+options.url+" not found!";
+        if (responseData.status!=0) {
+            var msg = options.errorLoadingData;
+            if (responseData.status=='404')
+            {
+                msg += " Page "+options.url+" not found!";
+            }
+            _showMessages(options, msg);
         }
-        _showMessages(options, msg);
     }
 
     /** Update HTML with num rows after refresh **/
@@ -1073,7 +1075,7 @@
             }, 500 );
         }
     }
-    
+
     /** Empty Message CSS **/
     var _setEmptyMessageCss = function(options) {
         if (options.emptyMessageCss != '')
@@ -1133,7 +1135,7 @@
     var _sortJson = function(options) {
         // no sort
         if (options.orderByField=='none') return;
-        
+
         // get all columns from head
         var sortColNames = options._rawData.head ? options._rawData.head : [];
         // set order by field
